@@ -98,7 +98,7 @@ Follow these steps to set up and run AlphaSuite on your local machine.
     Before running the app, you need to populate the database with market data. Run the download script from your terminal. This may take a long time for the initial run.
     ```bash
     # Download data for the US market (recommended for first run)
-    python download_data.py --run_daily_pipeline=true
+    python download_data.py pipeline
     ```
 
 2.  **Run the Streamlit Web Application:**

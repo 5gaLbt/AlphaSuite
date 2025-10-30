@@ -4,13 +4,11 @@ import traceback
 import os
 
 # Import the necessary functions from your backtesting engine
-from pybroker_trainer.strategy_loader import get_strategy_class_map
 from quant_engine import (
     run_pybroker_full_backtest,
-    plot_equity_curve,
+    plot_performance_vs_benchmark,
     plot_trades_on_chart
 )
-from tools.yfinance_tool import is_ticker_active
 from load_cfg import WORKING_DIRECTORY
 
 st.set_page_config(page_title="Interactive Backtester", layout="wide")
@@ -148,7 +146,7 @@ if st.session_state.bt_artifacts:
 
     with tab2:
         # --- Use a standard if/else block to prevent printing the DeltaGenerator object ---
-        fig_equity = plot_equity_curve(result, f"Equity Curve for {ticker} ({strategy})")
+        fig_equity = plot_performance_vs_benchmark(result, f"Equity Curve for {ticker} ({strategy})")
         if fig_equity:
             st.pyplot(fig_equity)
         else:

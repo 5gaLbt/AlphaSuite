@@ -8,7 +8,7 @@ from quant_engine import (
     run_pre_scan_universe,
     run_pybroker_portfolio_backtest,
     get_default_tickers,
-    plot_equity_curve
+    plot_performance_vs_benchmark
 )
 
 st.set_page_config(page_title="Portfolio Analysis", layout="wide")
@@ -160,7 +160,7 @@ with backtest_tab:
                     st.dataframe(metrics_display_df, use_container_width=True)
 
                     st.subheader("Portfolio Equity Curve")
-                    fig_equity = plot_equity_curve(result, f'Portfolio Equity for {strategy_type_portfolio}')
+                    fig_equity = plot_performance_vs_benchmark(result, f'Portfolio Equity for {strategy_type_portfolio}')
                     if fig_equity:
                         st.pyplot(fig_equity)
                 else:

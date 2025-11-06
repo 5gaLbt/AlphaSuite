@@ -11,15 +11,16 @@ This script uses a command-line interface with sub-commands for different action
 `pipeline`, `download`, `calculate`, `scan`, and `refresh`.
 """
 import argparse
+import datetime
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 import sys
 import traceback
 from dotenv import load_dotenv
 
-from core.db import close_database, initialize_database_schema
-from core import model # Ensure models are registered with Base
+from core.db import close_database, get_db, initialize_database_schema
+from core.model import Company, Exchange
+from tools.yfinance_tool import find_tickers_with_splits_in_db, refresh_split_tickers
 from core.logging_config import setup_logging
 from tools.scanner_tool import calculate_and_save_common_values_for_scanner, find_strongest_stocks_in_strongest_industries
 from tools.yfinance_tool import load_ticker_data, save_or_update_company_data
@@ -163,6 +164,36 @@ def run_refresh_ticker(ticker):
         logger.info(f"Successfully refreshed data for {ticker}. Last date: {result['shareprices'].index[-1].date()}")
     logger.info("--- Ticker Refresh Finished ---")
 
+def run_fix_split_data(market, batch_size):
+    """
+    Finds tickers with recent splits in the database and triggers a full price
+    history refresh for them using the centralized refresh logic.
+    """
+    logger.info("--- Starting Historical Split Data Fix ---")
+    db = next(get_db())
+    try:
+        # Step 1: Get all active company IDs for the target market.
+        query = db.query(Company.id).filter(Company.isactive == True)
+        if market:
+            query = query.join(Exchange, Company.exchange == Exchange.exchange_code).filter(Exchange.country_code == market)
+        company_ids = [c.id for c in query.all()]
+
+        # Step 2: Use the shared function to find which of these have had splits in the last 2 years.
+        two_years_ago = datetime.datetime.now() - datetime.timedelta(days=730)
+        tickers_to_fix = find_tickers_with_splits_in_db(db, company_ids, two_years_ago)
+        
+        if not tickers_to_fix:
+            logger.info("No tickers with recent splits found. Database is consistent.")
+            return
+
+        # Step 3: Call the centralized refresh function with the identified tickers.
+        logger.info(f"Found {len(tickers_to_fix)} tickers with recent splits to refresh: {[t.symbol for t in tickers_to_fix]}")
+        ticker_map = {c.symbol: c.id for c in tickers_to_fix}
+        refresh_split_tickers(db, ticker_map, batch_size)
+    finally:
+        db.close()
+    logger.info("--- Historical Split Data Fix Finished ---")
+
 def add_common_download_args(parser):
     """Adds common arguments used by download commands to a parser."""
     parser.add_argument("--market", type=str, help="The market to download (e.g., 'us', 'ca').", default="us")
@@ -240,6 +271,11 @@ def main():
     parser_refresh.add_argument("--ticker", type=str, required=True, help="The ticker symbol to refresh.")
     parser_refresh.set_defaults(func=run_refresh_ticker)
 
+    # --- 'fix-splits' command ---
+    parser_fix_splits = subparsers.add_parser('fix-splits', help='Scans all tickers for historical splits and refreshes their full price history to ensure consistency.')
+    parser_fix_splits.add_argument("--market", type=str, help="The market to fix (e.g., 'us', 'ca'). If omitted, all markets are processed.", default=None)
+    parser_fix_splits.add_argument("--batch_size", type=int, help="Batch size for processing.", default=20)
+    parser_fix_splits.set_defaults(func=run_fix_split_data)
     args = parser.parse_args()
 
     # Create a dictionary of arguments to pass to the function, excluding 'func'

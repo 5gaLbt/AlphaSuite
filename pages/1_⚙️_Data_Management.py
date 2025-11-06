@@ -290,6 +290,14 @@ with tab4:
         min_avg_volume = c3.number_input("Min Avg Volume", value=50000, disabled=is_any_running)
         run_scan_task = st.form_submit_button("Run Scanner", disabled=is_any_running or DEMO_MODE)
 
+    with st.form("fix_splits_form"):
+        st.subheader("Fix Historical Split Data")
+        st.markdown("Scans the database for tickers with recent splits and refreshes their entire price history to ensure data consistency. This is a one-time fix for past data issues.")
+        c1, c2 = st.columns(2)
+        fix_splits_market = c1.selectbox("Market", ["all", "us", "ca"], key="fix_splits_market", disabled=is_any_running)
+        fix_splits_batch_size = c2.number_input("Batch Size", min_value=10, max_value=200, value=50, disabled=is_any_running)
+        run_fix_splits_task = st.form_submit_button("Run Split Fix", disabled=is_any_running or DEMO_MODE)
+
     # --- Handle Actions (start processes if buttons are clicked) ---
     if run_calc:
         st.session_state.adhoc_task_name = 'calc'
@@ -314,6 +322,20 @@ with tab4:
             "--scanner_name", scanner_name, "--market", scan_market,
             "--min_avg_volume", str(min_avg_volume)
         ]
+        process, log_queue = run_command_async(cmd)
+        st.session_state.adhoc_process = process
+        st.session_state.adhoc_queue = log_queue
+        st.rerun()
+
+    if run_fix_splits_task:
+        st.session_state.adhoc_task_name = 'fix_splits'
+        st.session_state.adhoc_finished_message = None
+        st.session_state.scanner_results = None # Clear previous results
+        st.session_state.adhoc_logs = [f"[{datetime.now().strftime('%H:%M:%S')}] Starting historical split fix process..."]
+        cmd = [sys.executable, "download_data.py", "fix-splits", "--batch_size", str(fix_splits_batch_size)]
+        if fix_splits_market != "all":
+            cmd.extend(["--market", fix_splits_market])
+        
         process, log_queue = run_command_async(cmd)
         st.session_state.adhoc_process = process
         st.session_state.adhoc_queue = log_queue

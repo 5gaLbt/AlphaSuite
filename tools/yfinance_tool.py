@@ -35,6 +35,8 @@ from core.model import object_as_dict, Company, Exchange, PriceHistory, Financia
 
 logger = logging.getLogger(__name__)
 
+FULL_HISTORY_START_DATE = "2000-01-01" # A sensible default for the earliest date for most stock data.
+
 def yfinance_retry_handler(retries=5, backoff_factor=5, base_sleep_time=60):
     """
     A decorator factory to handle yfinance API calls with retries and exponential backoff
@@ -128,6 +130,54 @@ def get_yf_competitors(ticker: str) -> Union[list, dict]:
             return {"error": f"Error fetching data: {e}"}
         except Exception as e:
             return {"error": f"An unexpected error occurred: {e}"}
+
+def find_tickers_with_splits_in_db(db: Session, company_ids: list, start_date: datetime) -> list:
+    """
+    Queries the database to find companies from a given list that have had a stock split
+    since a specified start date.
+    """
+    if not company_ids:
+        return []
+    
+    return db.query(Company).join(
+        PriceHistory, Company.id == PriceHistory.company_id
+    ).filter(
+        Company.id.in_(company_ids),
+        PriceHistory.date >= start_date,
+        PriceHistory.split_coefficient != 0,
+        PriceHistory.split_coefficient != 1.0
+    ).distinct().all()
+
+def refresh_split_tickers(db: Session, ticker_map: dict, batch_size: int):
+    """
+    Downloads and saves the full price history for a given list of tickers.
+
+    Args:
+        db: The database session.
+        ticker_map: A dictionary mapping ticker symbols to their company IDs.
+        batch_size: The number of tickers to process in each batch.
+    """
+    tickers_to_process = list(ticker_map.keys())
+    total_tickers = len(tickers_to_process)
+
+    for i in range(0, total_tickers, batch_size):
+        batch_tickers = tickers_to_process[i:i + batch_size]
+        logger.info(f"Refreshing full history for batch {i // batch_size + 1}/{total_tickers // batch_size + 1} (tickers {i} to {min(i + batch_size, total_tickers)})")
+        
+        # Download full history for the batch
+        full_history_data = download_multiple_tickers_data(batch_tickers, start_date=FULL_HISTORY_START_DATE, end_date=None, interval="1d")
+        
+        # Save the downloaded data
+        if full_history_data is not None and not full_history_data.empty:
+            batch_data_to_save = {}
+            for t in batch_tickers:
+                # Select columns for the current ticker
+                ticker_cols = [c for c in full_history_data.columns if c.startswith(f"{t}-")]
+                if ticker_cols:
+                    ticker_df = full_history_data[ticker_cols].copy()
+                    ticker_df.columns = [col.replace(f"{t}-", "") for col in ticker_cols]
+                    batch_data_to_save[ticker_map[t]] = ticker_df
+            save_or_update_batch_price_data(db, batch_data_to_save)
 
 
 def save_company_to_db(db: Session, company_info: dict):
@@ -1088,12 +1138,27 @@ def _process_price_history_batches(db: Session, tickers: list, batch_size: int, 
                 save_or_update_batch_price_data(db, batch_price_data)
 
     if inactive_tickers:
-        logger.info(f"Marking {len(inactive_tickers)} tickers as inactive: {inactive_tickers}")
+        logger.info(f"No data returned for {len(inactive_tickers)} tickers in this batch. Marking as inactive: {inactive_tickers}")
         db.query(Company).filter(Company.symbol.in_(inactive_tickers)).update({"isactive": False}, synchronize_session=False)
         db.commit()
 
-def save_or_update_company_data(market="us", exchange=None, quote_types=["EQUITY", "ETF"], ticker_file="yhallsym.json", 
-        batch_size=50, start_date="2000-01-01", end_date=None, existing_tickers_action='skip', update_prices_action='yes'):
+    # --- After saving, check if any of the updated tickers had a split ---
+    # This ensures data consistency by triggering a full refresh if a split was just downloaded.
+    if start_date != FULL_HISTORY_START_DATE: # Don't re-check if we just did a full history download
+        company_ids_in_batch = [db.query(Company.id).filter(Company.symbol == t).scalar() for t in batch]
+        company_ids_in_batch = [cid for cid in company_ids_in_batch if cid is not None]
+        
+        # Use the shared function to find tickers with splits within the downloaded date range
+        start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        tickers_to_refresh = find_tickers_with_splits_in_db(db, company_ids_in_batch, start_date_dt)
+        
+        if tickers_to_refresh:
+            logger.warning(f"Newly downloaded data contains splits for: {[t.symbol for t in tickers_to_refresh]}. Triggering full history refresh.")
+            ticker_map = {t.symbol: t.id for t in tickers_to_refresh}
+            refresh_split_tickers(db, ticker_map, batch_size)
+
+def save_or_update_company_data(market="us", exchange=None, quote_types=["EQUITY", "ETF"], ticker_file="yhallsym.json", interval="1d",
+        batch_size=50, start_date=FULL_HISTORY_START_DATE, end_date=None, existing_tickers_action='skip', update_prices_action='yes'):
     """
     Loads tickers, downloads company data in batches, and saves or updates data in the database for specified quote types.
 

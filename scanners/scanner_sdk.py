@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 import textwrap
 from datetime import datetime, timedelta
+import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -167,9 +168,9 @@ class BaseScanner(ABC):
         if not company_ids:
             return pd.DataFrame()
 
-        start_date = datetime.utcnow() - timedelta(days=days_back)
+        start_date = datetime.now() - timedelta(days=days_back)
 
-        # Query to fetch price history including split coefficients
+        # Query to fetch price history.
         query = db.query(
             PriceHistory.company_id,
             PriceHistory.date,
@@ -178,8 +179,7 @@ class BaseScanner(ABC):
             PriceHistory.low,
             PriceHistory.close,
             PriceHistory.adjclose,
-            PriceHistory.volume,
-            PriceHistory.split_coefficient
+            PriceHistory.volume
         ).filter(
             PriceHistory.company_id.in_(company_ids),
             PriceHistory.date >= start_date,
@@ -188,14 +188,22 @@ class BaseScanner(ABC):
         df = pd.read_sql(query.statement, db.bind)
 
         if not df.empty:
-            # Apply split adjustments to OHLC prices
-            # This ensures indicators are calculated on prices consistent with charting software
             df = df.sort_values(by=['company_id', 'date'])
-            # Replace 0s with 1s in split_coefficient to avoid division by zero during cumprod
-            df['split_coefficient'] = df['split_coefficient'].replace(0, 1)
+
+            # --- Apply dividend and split adjustments ---
+            # This ensures that scanner calculations are based on a continuous price series,
+            # consistent with charting platforms and the backtesting engine.
+            # The adjustment factor is derived from the 'adjclose' which is adjusted for both dividends and splits.
+            # We apply this factor to the raw OHLC prices.
+            adjustment_factor = df['adjclose'] / df['close']
+            df['open'] = df['open'] * adjustment_factor
+            df['high'] = df['high'] * adjustment_factor
+            df['low'] = df['low'] * adjustment_factor
+            df['close'] = df['adjclose'] # The close price is now the fully adjusted price.
             
-            df['cum_split'] = df.groupby('company_id')['split_coefficient'].transform(lambda x: x.iloc[::-1].cumprod().iloc[::-1])
-            for col in ['open', 'high', 'low', 'close']:
-                df[col] = df[col] / df['cum_split']
-        
+            # Adjust volume for splits. The volume adjustment is the inverse of the price adjustment.
+            # Replace inf/nan that could result from division by zero with 1 (no adjustment).
+            volume_adjustment = (1 / adjustment_factor).replace([np.inf, -np.inf], np.nan).fillna(1)
+            df['volume'] = (df['volume'] * volume_adjustment).round()
+
         return df

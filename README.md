@@ -8,6 +8,8 @@ AlphaSuite is an open-source quantitative analysis platform that gives you the p
     *   **Walk-Forward Analysis**: Test strategies on out-of-sample data to prevent overfitting and ensure robustness.
     *   **Bayesian Optimization**: Automatically tune strategy parameters to find the most optimal settings.
     *   **ML Integration**: Seamlessly integrate machine learning models (like LightGBM) into your strategies.
+    *   **Built-in Risk Management**: Enforces professional-grade position sizing and stop-loss mechanics based on volatility (e.g., ATR) and predefined risk-per-trade, a core feature often missing in other platforms.
+    *   **Context-Aware Design**: Provides the framework and tools for strategies to implement dynamic market regime detection and adaptive logic, allowing models to learn and evolve with changing market conditions.
     *   **Extensible SDK**: Add new, complex trading strategies by creating a single Python file.
 *   **Powerful Market Scanning**: A fully customizable scanner to find trading opportunities across global markets.
     *   **Generic Screener**: A rich UI to build custom screens using dozens of fundamental and technical filters without writing code.
@@ -45,6 +47,20 @@ Analyze the out-of-sample performance of a trained and tuned strategy model.
 **Detailed Metrics Table:**
 ![Detailed Metrics](images/SPY_donchian_breakout_metrics.jpg)
 
+## 💡 What Makes AlphaSuite Different?
+
+In a world of numerous trading platforms, AlphaSuite was built to fill a specific gap: bridging the divide between simplistic backtesters and complex, institutional-grade systems. Its core philosophy is that modern trading strategies should be adaptive and data-driven from the ground up.
+
+Unlike many platforms where machine learning is an optional add-on, AlphaSuite is **ML-native**. Its entire workflow is designed to be driven by ML models, reflecting the shift in quantitative finance away from static rules and toward dynamic strategies that learn from the market.
+
+Key differentiators include:
+*   **End-to-End ML-Centric Workflow**: Strategies are built around ML features, not just enhanced by them. The model's output *is* the signal.
+*   **Built-in Professional Risk Management**: The framework's core trading logic enforces disciplined, non-negotiable risk management. Position sizing is systematically calculated based on volatility (e.g., ATR) and a predefined risk-per-trade, a feature often missing from traditional backtesters. This enforces capital preservation by design.
+*   **Enables Strategy-Driven Context Awareness**: While not a built-in feature, the framework provides the tools and hooks for strategies to become *regime-aware*. Developers can easily incorporate market context (like volatility regimes or trend strength) into their features, allowing models to learn *when* and *why* a setup is effective.
+*   **Focus on Robust Validation**: With tools like walk-forward analysis and portfolio-level backtesting, AlphaSuite emphasizes proving a strategy's edge on unseen data, avoiding the common pitfalls of overfitting.
+
+In short, AlphaSuite isn’t just about asking “would this have made money?”—it’s about building strategies that understand *when* to trade, *how much* to risk, and *why* they have an edge.
+
 ## 📖 Articles & Case Studies
 
 Check out these articles to see how AlphaSuite can be used to develop and test sophisticated trading strategies from scratch:
@@ -56,6 +72,9 @@ Check out these articles to see how AlphaSuite can be used to develop and test s
 *   **[From Chaos Theory to a Profitable Trading Strategy](https://medium.com/codex/from-chaos-theory-to-a-profitable-trading-strategy-in-30-minutes-d247cba4bbbd)**: A step-by-step guide on building a rule-based strategy using concepts from chaos theory.
 *   **[Supercharging a Machine Learning Strategy with Lorenz Features](https://medium.com/codex/from-chaos-to-alpha-part-2-supercharging-a-machine-learning-strategy-with-lorenz-features-794acfd3f88c)**: Demonstrates how to enhance an ML-based strategy with custom features and optimize it using walk-forward analysis.
 *   **[The Institutional Edge: How We Boosted a Strategy’s Return with Volume Profile](https://medium.com/codex/the-institutional-edge-how-we-boosted-a-strategys-return-from-162-to-223-with-one-indicator-eef74cadae91)**: A deep dive into using Volume Profile to enhance a classic trend-following strategy, demonstrating a significant performance boost.
+*   **[Trading with Less Surprise: Using Shannon Entropy to Improve a Breakout Strategy](https://medium.com/codex/trading-with-less-surprise-using-shannon-entropy-to-improve-a-breakout-strategy-4d0a15098cba)**: Demonstrates how a concept from information theory can dramatically improve a classic trend-following strategy. 
+*   **[The Feature Engineering Treadmill: Why One “Magic” Feature Isn’t Enough](https://medium.com/codex/the-feature-engineering-treadmill-why-one-magic-feature-isnt-enough-fd2ac4f396e2)**: Explores how to evolve a promising idea into a more robust, multi-asset system.
+*   **[AI Can Understand Context. Can Your Trading Strategy?](https://medium.com/codex/ai-can-understand-context-can-your-trading-strategy-bfacdf6d66a1)**: Explores the importance of market regime features, compare several methods we’ve tested using AlphaSuite.
 
 ## 🛠️ Tech Stack
 

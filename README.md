@@ -74,7 +74,8 @@ Check out these articles to see how AlphaSuite can be used to develop and test s
 *   **[The Institutional Edge: How We Boosted a Strategy’s Return with Volume Profile](https://medium.com/codex/the-institutional-edge-how-we-boosted-a-strategys-return-from-162-to-223-with-one-indicator-eef74cadae91)**: A deep dive into using Volume Profile to enhance a classic trend-following strategy, demonstrating a significant performance boost.
 *   **[Trading with Less Surprise: Using Shannon Entropy to Improve a Breakout Strategy](https://medium.com/codex/trading-with-less-surprise-using-shannon-entropy-to-improve-a-breakout-strategy-4d0a15098cba)**: Demonstrates how a concept from information theory can dramatically improve a classic trend-following strategy. 
 *   **[The Feature Engineering Treadmill: Why One “Magic” Feature Isn’t Enough](https://medium.com/codex/the-feature-engineering-treadmill-why-one-magic-feature-isnt-enough-fd2ac4f396e2)**: Explores how to evolve a promising idea into a more robust, multi-asset system.
-*   **[AI Can Understand Context. Can Your Trading Strategy?](https://medium.com/codex/ai-can-understand-context-can-your-trading-strategy-bfacdf6d66a1)**: Explores the importance of market regime features, compare several methods we’ve tested using AlphaSuite.
+*   **[Your Trading Strategy Has No Context and That’s the Problem](https://medium.com/codex/ai-can-understand-context-can-your-trading-strategy-bfacdf6d66a1)**: Explores the importance of market regime features, compare several methods we’ve tested using AlphaSuite.
+*   **[Beyond the Almanac: Supercharging Trading Strategies with On-Demand Seasonality Analysis](https://medium.com/codex/beyond-the-almanac-supercharging-trading-strategies-with-on-demand-seasonality-analysis-063bf7d58f2c)**: Introudces AlphaSuite's new on-demand seasonality analysis feature that can analyze seasonality on the fly for a specific ticker.
 
 ## 🛠️ Tech Stack
 

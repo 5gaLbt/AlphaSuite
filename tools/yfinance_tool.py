@@ -1111,6 +1111,9 @@ def _process_price_history_batches(db: Session, tickers: list, batch_size: int, 
         logger.info(f"Processing share price batch {i // batch_size + 1}/{total_tickers // batch_size + 1} (tickers {i} to {min(i + batch_size, total_tickers)})")
         
         share_price_data = download_multiple_tickers_data(batch, start_date, end_date)
+        # --- Track found tickers to correctly identify inactive ones ---
+        found_tickers_in_batch = set()
+
         if share_price_data is not None and not share_price_data.empty:
             batch_price_data = {}
             for ticker in batch:
@@ -1123,39 +1126,74 @@ def _process_price_history_batches(db: Session, tickers: list, batch_size: int, 
                 ticker_prefix = f"{ticker}-"
                 ticker_columns = [c for c in share_price_data.columns if c.startswith(ticker_prefix)]
 
-                if not ticker_columns:
-                    inactive_tickers.append(ticker)
-                else:
+                if ticker_columns:
                     price_data = share_price_data[ticker_columns].copy()
                     # Robustly remove the ticker prefix, which might be "TICKER-" or just "TICKER".
                     # This handles both US stocks (e.g., "AAPL-Open") and international stocks (e.g., "ZUP.TO-Open").
                     prefix_to_remove = f"{ticker}-"
                     price_data.columns = [col.replace(prefix_to_remove, "") for col in price_data.columns]
-                    if not price_data.empty:
+                    
+                    # --- Only mark as found if there is actual data after dropping NaNs ---
+                    # This ensures that tickers with all-NaN rows (due to concat alignment) are treated as missing.
+                    valid_price_data = price_data.dropna()
+                    if not valid_price_data.empty:
+                        # Check if the data is up-to-date relative to the requested end date
+                        is_up_to_date = True
+                        last_date = valid_price_data.index.max()
+                        if last_date.tzinfo:
+                            last_date = last_date.tz_localize(None)
+                        
+                        target_date = datetime.now()
+                        if end_date:
+                            target_date = datetime.strptime(end_date, '%Y-%m-%d')
+                        
+                        # Use business days to account for weekends and holidays.
+                        # np.busday_count handles weekends automatically.
+                        try:
+                            days_diff = np.busday_count(last_date.date().isoformat(), target_date.date().isoformat())
+                        except Exception:
+                            days_diff = (target_date - last_date).days
+
+                        # Allow for 3 missing business days (covers long weekends + 1-2 extra holidays)
+                        if days_diff > 3:
+                            is_up_to_date = False
+                            logger.warning(f"[{ticker}] Data appears stale (Last: {last_date.date()}, Target: {target_date.date()}). Marking as inactive.")
+
+                        if is_up_to_date:
+                            found_tickers_in_batch.add(ticker)
+                        
                         batch_price_data[company.id] = price_data
             
             if batch_price_data:
                 save_or_update_batch_price_data(db, batch_price_data)
+                
+                # --- After saving, check if any of the updated tickers in THIS BATCH had a split ---
+                if start_date != FULL_HISTORY_START_DATE:
+                    # Use the IDs of companies we just successfully updated
+                    company_ids_in_batch = list(batch_price_data.keys())
+                    
+                    start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    tickers_to_refresh = find_tickers_with_splits_in_db(db, company_ids_in_batch, start_date_dt)
+                    
+                    if tickers_to_refresh:
+                        logger.warning(f"Newly downloaded data contains splits for: {[t.symbol for t in tickers_to_refresh]}. Triggering full history refresh.")
+                        ticker_map = {t.symbol: t.id for t in tickers_to_refresh}
+                        refresh_split_tickers(db, ticker_map, batch_size)
+        
+        # --- Mark tickers as inactive if they returned no data ---
+        batch_inactive_tickers = []
+        for ticker in batch:
+            if ticker not in found_tickers_in_batch:
+                batch_inactive_tickers.append(ticker)
+                inactive_tickers.append(ticker)
+
+        if batch_inactive_tickers:
+            logger.info(f"No data returned for {len(batch_inactive_tickers)} tickers in this batch. Marking as inactive: {batch_inactive_tickers}")
+            db.query(Company).filter(Company.symbol.in_(batch_inactive_tickers)).update({"isactive": False}, synchronize_session=False)
+            db.commit()
 
     if inactive_tickers:
-        logger.info(f"No data returned for {len(inactive_tickers)} tickers in this batch. Marking as inactive: {inactive_tickers}")
-        db.query(Company).filter(Company.symbol.in_(inactive_tickers)).update({"isactive": False}, synchronize_session=False)
-        db.commit()
-
-    # --- After saving, check if any of the updated tickers had a split ---
-    # This ensures data consistency by triggering a full refresh if a split was just downloaded.
-    if start_date != FULL_HISTORY_START_DATE: # Don't re-check if we just did a full history download
-        company_ids_in_batch = [db.query(Company.id).filter(Company.symbol == t).scalar() for t in batch]
-        company_ids_in_batch = [cid for cid in company_ids_in_batch if cid is not None]
-        
-        # Use the shared function to find tickers with splits within the downloaded date range
-        start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
-        tickers_to_refresh = find_tickers_with_splits_in_db(db, company_ids_in_batch, start_date_dt)
-        
-        if tickers_to_refresh:
-            logger.warning(f"Newly downloaded data contains splits for: {[t.symbol for t in tickers_to_refresh]}. Triggering full history refresh.")
-            ticker_map = {t.symbol: t.id for t in tickers_to_refresh}
-            refresh_split_tickers(db, ticker_map, batch_size)
+        logger.info(f"Total inactive tickers identified in this run: {len(inactive_tickers)}")
 
 def save_or_update_company_data(market="us", exchange=None, quote_types=["EQUITY", "ETF"], ticker_file="yhallsym.json", interval="1d",
         batch_size=50, start_date=FULL_HISTORY_START_DATE, end_date=None, existing_tickers_action='skip', update_prices_action='yes'):

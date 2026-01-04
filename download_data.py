@@ -17,9 +17,10 @@ import os
 import sys
 import traceback
 from dotenv import load_dotenv
+from sqlalchemy import func
 
 from core.db import close_database, get_db, initialize_database_schema
-from core.model import Company, Exchange
+from core.model import Company, Exchange, PriceHistory
 from tools.yfinance_tool import find_tickers_with_splits_in_db, refresh_split_tickers
 from core.logging_config import setup_logging
 from tools.scanner_tool import calculate_and_save_common_values_for_scanner, find_strongest_stocks_in_strongest_industries
@@ -194,6 +195,48 @@ def run_fix_split_data(market, batch_size):
         db.close()
     logger.info("--- Historical Split Data Fix Finished ---")
 
+def find_earliest_latest_date_for_market(market):
+    """
+    Finds the earliest of the latest '1d' price history dates for a given market.
+
+    This is useful for finding the oldest "last updated" date among a group of stocks
+    to pre-fill the start date for gap-filling downloads.
+
+    Args:
+        market (str): The market code (e.g., 'us', 'ca').
+
+    Returns:
+        A datetime.date object representing the earliest of the latest dates,
+        or None if no data is found.
+
+    Raises:
+        Exception: If any error occurs during the database query or processing.
+    """
+    with next(get_db()) as db:
+        try:
+            # 1. Find the latest date for each company
+            latest_dates_per_company = db.query(
+                PriceHistory.company_id,
+                func.max(PriceHistory.date).label('latest_date')
+            ).group_by(PriceHistory.company_id).subquery()
+
+            # 2. Join with Company and Exchange to filter by market and active status
+            # 3. Find the earliest of the latest dates
+            earliest_latest_result = db.query(func.min(latest_dates_per_company.c.latest_date)).\
+                join(Company, Company.id == latest_dates_per_company.c.company_id).\
+                join(Exchange, Company.exchange == Exchange.exchange_code).\
+                filter(Exchange.country_code == market, Company.isactive == True).scalar()
+
+            if earliest_latest_result:
+                return earliest_latest_result
+            else:
+                logger.warning(f"No price history data found for market '{market}'.")
+                return None
+        except Exception as e:
+            logger.error(f"An error occurred while finding the earliest latest date for market '{market}': {e}", exc_info=True)
+            raise  # Re-raise the exception to be caught by the calling function
+
+
 def add_common_download_args(parser):
     """Adds common arguments used by download commands to a parser."""
     parser.add_argument("--market", type=str, help="The market to download (e.g., 'us', 'ca').", default="us")
@@ -252,6 +295,11 @@ def main():
     parser_range_download.add_argument("--existing_tickers_action", type=str, help="Action for existing tickers.", default="only")
     parser_range_download.add_argument("--update_prices_action", type=str, help="Action for updating prices.", default='only')
     parser_range_download.set_defaults(func=run_range_download)
+
+    # --- 'find-start-date' command (for UI helper) ---
+    parser_find_date = subparsers.add_parser('find-start-date', help='Finds the earliest latest date for a market.')
+    parser_find_date.add_argument("--market", type=str, required=True, help="Market to find the date for (e.g., 'us', 'ca').")
+    parser_find_date.set_defaults(func=lambda market: print(find_earliest_latest_date_for_market(market)))
 
     # --- 'calculate' command ---
     parser_calc = subparsers.add_parser('calculate', help='Calculate and save common values for the scanner.')

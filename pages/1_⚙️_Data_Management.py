@@ -1,3 +1,4 @@
+import subprocess
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -172,6 +173,8 @@ with tab3:
         st.session_state.range_download_logs = []
     if 'range_download_finished_message' not in st.session_state:
         st.session_state.range_download_finished_message = None
+    if 'range_start_date' not in st.session_state:
+        st.session_state.range_start_date = datetime.today()
 
     is_running_range = st.session_state.range_download_process is not None
 
@@ -181,6 +184,25 @@ with tab3:
     with st.form("range_download_form"):
         c1, c2 = st.columns(2)
         range_market = c1.selectbox("Market", ["us", "ca"], key="range_market", disabled=is_running_range)
+        if st.form_submit_button("Find Smart Start Date", disabled=is_running_range or DEMO_MODE):
+            with st.spinner(f"Finding oldest last-updated date for '{range_market.upper()}' market..."):
+                try:
+                    cmd = [sys.executable, "download_data.py", "find-start-date", "--market", range_market]
+                    # The script might output logging info first. The date is the last line.
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=90)
+                    # Split the output by newlines and take the last non-empty line.
+                    date_str = result.stdout.strip().split('\n')[-1]
+
+                    if date_str and date_str != 'None':
+                        found_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                        st.session_state.range_start_date = found_date
+                        st.success(f"Suggested start date: {found_date.strftime('%Y-%m-%d')}")
+                    else:
+                        st.warning("Could not determine a start date. No price data found.")
+                except Exception as e:
+                    st.error(f"Failed to find start date: {e}")
+                    st.error(f"Output: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
+
         update_prices_action_range = c2.selectbox(
             "Update Action",
             ["only", "yes", "no"],
@@ -191,7 +213,7 @@ with tab3:
 
         today = datetime.today()
         c1, c2 = st.columns(2)
-        start_date = c1.date_input("Start Date", value=today, disabled=is_running_range)
+        start_date = c1.date_input("Start Date", value=st.session_state.range_start_date, disabled=is_running_range)
         end_date = c2.date_input("End Date", value=today, disabled=is_running_range)
 
         run_range_download_button = st.form_submit_button("Run Range Download", use_container_width=True, disabled=is_running_range or DEMO_MODE)

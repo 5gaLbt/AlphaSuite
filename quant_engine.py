@@ -1642,91 +1642,39 @@ def run_pybroker_full_backtest(ticker: str = 'SPY', start_date: str = '2000-01-0
 
 def run_quick_test(ticker: str, strategy_type: str, start_date: str, end_date: str, strategy_params: dict, commission_cost: float, stop_event_checker=None) -> Optional[dict]:
     """
-    Runs a full, in-sample backtest using a pre-trained model saved by the 'train' command.
-    This function loads the saved model and its associated parameters, then runs a backtest
-    over the specified historical period.
-    Returns a dictionary of backtest artifacts (result, features, model).
+    Runs a quick backtest using run_pybroker_walkforward with default hyperparameters.
+    This ensures that ML strategies use a real model (LGBM) so that probability thresholds are respected.
     """
-    features: list[str] = []
-    context_columns_to_register: list[str] = []
-    model_dir = os.path.join('pybroker_trainer', 'artifacts')
-
     try:
         if stop_event_checker and stop_event_checker(): return None
 
-        strategy_class = load_strategy_class(strategy_type)
-        if not strategy_class:
-            logger.error(f"Could not load strategy class for {strategy_type}. Aborting.")
-            return None
-        
-        # Start with defaults and apply overrides from UI
-        base_params = get_strategy_defaults(strategy_class)
-        base_params.update(strategy_params)
-
-        strategy_instance = strategy_class(params=base_params)
-        is_ml = strategy_instance.is_ml_strategy
-        
-        base_df = _prepare_base_data(ticker, start_date, end_date, base_params)
-        data_df = strategy_instance.prepare_data(data=base_df)
-        features = strategy_instance.get_feature_list()
-        context_columns_to_register = BASE_CONTEXT_COLUMNS + strategy_instance.get_extra_context_columns_to_register()
-        
-        if data_df.empty:
-            logger.error(f"No data available for {ticker} in the specified range. Aborting.")
-            return None
-
-        if is_ml:
-            pybroker.register_columns(features)
-        pybroker.register_columns(context_columns_to_register)
-        pybroker.disable_logging()
-
-        model_name = 'quick_test_model'
-        model_source = None
-        if is_ml:
-            model_config = strategy_instance.get_model_config()
-            pass_through_model = PassThroughModel(n_classes=model_config.get('num_class', 2))
-            model_bundle = {'model': pass_through_model, 'features': features}
-            def train_fn_dummy(symbol, train_data, test_data, **kwargs):
-                return model_bundle
-            def model_input_data_fn(data): 
-                return data[features]
-            model_source = pybroker.model(name=model_name, fn=train_fn_dummy, predict_fn=custom_predict_fn, input_data_fn=model_input_data_fn, pretrained=True)
-
-        strategy_config = StrategyConfig(
-            position_mode=PositionMode.LONG_ONLY, 
-            exit_on_last_bar=True,
-            fee_mode=pybroker.FeeMode.PER_SHARE if commission_cost > 0 else None,
-            fee_amount=commission_cost
+        # Use run_pybroker_walkforward to handle the backtest logic
+        # We disable tuning to make it "quick", but it will still train a default model.
+        result, _ = run_pybroker_walkforward(
+            ticker=ticker,
+            strategy_type=strategy_type,
+            start_date=start_date,
+            end_date=end_date,
+            tune_hyperparameters=False, # Quick test doesn't tune
+            plot_results=False,
+            save_assets=False,
+            override_params=strategy_params,
+            use_tuned_strategy_params=False, # Use the passed params (which might be defaults + overrides)
+            commission_cost=commission_cost,
+            stop_event_checker=stop_event_checker,
+            calc_bootstrap=False # Speed up
         )
-        trader = strategy_instance.get_trader(model_name if is_ml else None, {ticker: base_params})
-        strategy = Strategy(data_source=data_df, start_date=start_date, end_date=end_date, config=strategy_config)
-        if is_ml:
-            strategy.add_execution(trader.execute, [ticker], models=[model_source])
-        else:
-            strategy.add_execution(trader.execute, [ticker])
 
-        logger.info("Starting Quick Test backtest...")
-        if len(data_df) < 4:
-            logger.error(f"Not enough data ({len(data_df)} bars) to run a backtest. Minimum 4 required.")
+        if result is None:
             return None
-        
-        # --- Use strategy.walkforward(windows=1) to run a single backtest ---
-        min_train_size = 2 / (len(data_df) - 2) if len(data_df) > 2 else 0.99
-        result = strategy.walkforward(windows=1, train_size=min_train_size)
 
         # --- Annualize Sharpe and Sortino Ratios ---
-        if result and hasattr(result, 'metrics') and hasattr(result, 'metrics_df'):
-            # The result object is immutable. We create a separate, annualized version for display.
+        if hasattr(result, 'metrics') and hasattr(result, 'metrics_df'):
             display_metrics_df = prepare_metrics_df_for_display(result.metrics_df, '1d')
         else:
-            display_metrics_df = pd.DataFrame() # Handle case where backtest fails
+            display_metrics_df = pd.DataFrame()
 
-        if stop_event_checker and stop_event_checker():
-            logger.warning("Stop event detected during Quick Test. Results may be incomplete.")
-            return None
-
-        # Prepare trades dataframe for UI display
-        trades_df = result.trades.copy() if result else pd.DataFrame()
+        trades_df = result.trades.copy() if hasattr(result, 'trades') else pd.DataFrame()
 
         return {
             "metrics_df": display_metrics_df,
@@ -1736,15 +1684,9 @@ def run_quick_test(ticker: str, strategy_type: str, start_date: str, end_date: s
         }
 
     except Exception as e:
-        logger.error(f"An error occurred during the full backtest for {ticker}: {e}")
+        logger.error(f"An error occurred during the quick test for {ticker}: {e}")
         traceback.print_exc()
         return None
-    finally:
-        # Unregister columns to clean up global scope
-        if features:
-            pybroker.unregister_columns(features)
-        if context_columns_to_register:
-            pybroker.unregister_columns(context_columns_to_register)
 
 def run_pybroker_portfolio_backtest(tickers: list[str], strategy_type: str, start_date: str, end_date: str, plot_results: bool = True, use_tuned_strategy_params: bool = False, max_open_positions: int = 5, commission_cost: float = 0.0):
     """

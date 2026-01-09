@@ -1095,9 +1095,9 @@ def _process_company_info_batches(db: Session, tickers: list, batch_size: int, q
         logger.info(f"Processing company info batch {i // batch_size + 1}/{total_tickers // batch_size + 1} (tickers {i} to {min(i + batch_size, total_tickers)})")
         company_info_batch = get_company_info_batch(sub_batch)
         for ticker, company_data in company_info_batch.items():
-            if company_data and company_data[1] and company_data[1].get("quoteType") in quote_types:
+            if company_data and company_data[1] and (not quote_types or company_data[1].get("quoteType") in quote_types):
                 company = save_company_to_db(db, company_data[1])
-                if company:
+                if company and company.quotetype in ["EQUITY", "ETF"]:
                     save_extra_company_data_to_db(db, company.id, company_data[0], company_data[1])
                 processed_tickers.append(ticker)
     return processed_tickers
@@ -1195,7 +1195,7 @@ def _process_price_history_batches(db: Session, tickers: list, batch_size: int, 
     if inactive_tickers:
         logger.info(f"Total inactive tickers identified in this run: {len(inactive_tickers)}")
 
-def save_or_update_company_data(market="us", exchange=None, quote_types=["EQUITY", "ETF"], ticker_file="yhallsym.json", interval="1d",
+def save_or_update_company_data(market="us", exchange=None, quote_types=["EQUITY", "ETF", "CRYPTOCURRENCY"], ticker_file="yhallsym.json", interval="1d",
         batch_size=50, start_date=FULL_HISTORY_START_DATE, end_date=None, existing_tickers_action='skip', update_prices_action='yes'):
     """
     Loads tickers, downloads company data in batches, and saves or updates data in the database for specified quote types.
@@ -1232,7 +1232,7 @@ def save_or_update_company_data(market="us", exchange=None, quote_types=["EQUITY
         # Step 2: Process company info if not 'only' prices
         if existing_tickers_action != 'only' or update_prices_action in ['yes', 'no']:
             tickers_to_process = _process_company_info_batches(db, tickers_to_process, batch_size, quote_types)
-            logger.info(f"Found {len(tickers_to_process)} tickers matching quote types {quote_types} to process.")
+            logger.info(f"Found {len(tickers_to_process)} tickers matching quote types {quote_types if quote_types else 'any'} to process.")
 
         if update_prices_action == "no":
             logger.info("Skipping price updates as per configuration.")

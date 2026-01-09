@@ -241,7 +241,7 @@ def add_common_download_args(parser):
     """Adds common arguments used by download commands to a parser."""
     parser.add_argument("--market", type=str, help="The market to download (e.g., 'us', 'ca').", default="us")
     parser.add_argument("--exchange", type=str, help="The specific exchange.", default=None)
-    parser.add_argument("--quote_types", type=str, help="Comma-separated list of quote types.", default="EQUITY,ETF")
+    parser.add_argument("--quote_types", type=str, help="Comma-separated list of quote types.", default="EQUITY,ETF,CRYPTOCURRENCY")
     parser.add_argument("--batch_size", type=int, help="Batch size for processing.", default=50)
 
 def main():
@@ -357,6 +357,9 @@ python download_data.py pipeline
 
 Initial download of a market:
 python download_data.py download --market=us
+
+Initial download of cryptos:
+python download_data.py download --ticker_file=cryptos.json --quote_types=CRYPTOCURRENCY
 
 Update company info only (no prices):
 python download_data.py download --market=ca --existing_tickers_action=only --update_prices_action=no

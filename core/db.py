@@ -50,11 +50,13 @@ def _populate_exchange_table():
             return
 
         insert_scripts = [
-            (10,'Americas','United States of America','us','NYSE','New York Stock Exchange',None,'09:30','16:00', 'America/New_York'),
-            (11,'Americas','United States of America','us','NMS','NASDAQ Stock Market',None,'09:30','16:00', 'America/New_York'),
+            (10,'Americas','United States of America','us','NYQ','New York Stock Exchange',None,'09:30','16:00', 'America/New_York'),
+            (11,'Americas','United States of America','us','NMS','Nasdaq National Market System',None,'09:30','16:00', 'America/New_York'),
             (12,'Americas','United States of America','us','PNK','OTC Markets',None,'09:30','16:00', 'America/New_York'),
-            (13,'Americas','United States of America','us','PCX','NYSEArca',None,'09:30','16:00', 'America/New_York'),
-            (14,'Americas','United States of America','us','NGM','NasdaqGM',None,'09:30','16:00', 'America/New_York'),
+            (13,'Americas','United States of America','us','PCX','NYSE Arca',None,'09:30','16:00', 'America/New_York'),
+            (14,'Americas','United States of America','us','NGM','Nasdaq Global Market',None,'09:30','16:00', 'America/New_York'),
+            (15,'Americas','United States of America','us','NCM','Nasdaq Capital Market',None,'09:30','16:00', 'America/New_York'),
+            (16,'Americas','United States of America','us','BTS','BATS/Cboe BZX',None,'09:30','16:00', 'America/New_York'),
             (19,'Americas','United States of America','us','CCC','Cryptocurrency',None,'09:30','16:00', 'America/New_York'),
             (20,'Americas','Canada','ca','TOR','Toronto Stock Exchange','.TO','09:30','16:00', 'America/Toronto'),
             (21,'Americas','Canada','ca','VAN','TSX Venture Exchange','.V','09:30','16:00', 'America/Toronto'),

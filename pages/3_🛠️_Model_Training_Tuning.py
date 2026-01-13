@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+import pandas as pd
 import logging
 import logging.handlers
 from datetime import datetime
@@ -351,6 +352,27 @@ with quick_test_tab:
         if results.get("trades_fig"): st.pyplot(results["trades_fig"])
         with st.expander("View Detailed Trades"):
             st.dataframe(results["trades_df"])
+        
+        if results.get("noise_test_results"):
+            st.subheader("🛡️ Noise & Leakage Test Results")
+            for i, res in enumerate(results["noise_test_results"]):
+                with st.expander(f"Fold {i+1} Analysis ({res.get('status', 'N/A')})", expanded=True):
+                    if res.get('status') == 'PASS':
+                        st.success(res.get('message'))
+                    elif res.get('status') == 'FAIL':
+                        st.error(res.get('message'))
+                    else:
+                        st.warning(res.get('message'))
+                    
+                    c1, c2 = st.columns(2)
+                    c1.metric("Baseline Accuracy", f"{res.get('baseline_score', 0):.4f}")
+                    c2.metric("Noise Accuracy", f"{res.get('noise_score', 0):.4f}", delta=f"{res.get('noise_score', 0) - res.get('baseline_score', 0):.4f}", delta_color="inverse")
+                    
+                    if res.get('permutation_importances'):
+                        st.write("**Top Features (Permutation Importance):**")
+                        fi_df = pd.DataFrame(res['permutation_importances'])
+                        st.dataframe(fi_df, hide_index=True)
+
         if st.button("Run New Quick Test", use_container_width=True):
             st.session_state.quick_test_results = None
             st.rerun()

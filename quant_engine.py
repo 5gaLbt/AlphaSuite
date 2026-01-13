@@ -31,6 +31,7 @@ import numpy as np
 import pybroker
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
+from sklearn.inspection import permutation_importance
 from decimal import Decimal
 from skopt import gp_minimize
 from skopt.space import Real, Integer
@@ -201,6 +202,84 @@ def _prepare_base_data(ticker: str, start_date: str, end_date: str, strategy_par
     df_formatted['low'] = df_formatted['low'] * adjustment_factor
     df_formatted['close'] = df_formatted['adjclose']
     return df_formatted
+
+def check_noise_impact(model, X_test, y_test, feature_names):
+    """
+    Performs a stress test on the model to check for data leakage and overfitting.
+    1. Permutation Importance: Checks which features actually contribute to performance.
+    2. Noise Test: Replaces data with random noise to ensure performance drops.
+    Returns a dictionary with test results.
+    """
+    if X_test.empty or y_test.empty:
+        return {}
+
+    logger.info("--- Running Noise/Permutation Test on Out-of-Sample Data ---")
+    test_results = {}
+    
+    try:
+        # 1. Measure Baseline Performance
+        baseline_score = model.score(X_test, y_test)
+        logger.info(f"Baseline Accuracy on Test Data: {baseline_score:.4f}")
+        test_results['baseline_score'] = baseline_score
+
+        # 2. Run Permutation Importance
+        # n_repeats=5 is sufficient for a quick diagnostic
+        result = permutation_importance(
+            model, X_test, y_test, 
+            n_repeats=5, 
+            random_state=42, 
+            n_jobs=-1
+        )
+
+        # 3. Analyze Results
+        sorted_idx = result.importances_mean.argsort()[::-1]
+        logger.info("Top 5 Features by Permutation Importance (Drop in Accuracy):")
+        top_features = []
+        for i in sorted_idx[:5]:
+            feature_name = feature_names[i]
+            importance = result.importances_mean[i]
+            logger.info(f"  {feature_name}: {importance:.4f}")
+            top_features.append({'feature': feature_name, 'importance': importance})
+        test_results['permutation_importances'] = top_features
+
+        # 4. The "Total Noise" Test
+        # Create a completely random dataset of the same shape
+        X_noise = pd.DataFrame(
+            np.random.rand(*X_test.shape), 
+            columns=X_test.columns, 
+            index=X_test.index
+        )
+        
+        noise_score = model.score(X_noise, y_test)
+        logger.info(f"Score on Pure Noise Data: {noise_score:.4f}")
+        test_results['noise_score'] = noise_score
+        
+        # Heuristic check
+        if noise_score >= baseline_score * 0.98 and baseline_score > 0.5:
+             msg = "CRITICAL WARNING: Model performs well on random noise. Check for Data Leakage!"
+             logger.warning(msg)
+             test_results['status'] = 'FAIL'
+             test_results['message'] = msg
+        elif noise_score < baseline_score:
+            msg = "Test Passed: Model performance collapsed on noise (as expected)."
+            logger.info(msg)
+            test_results['status'] = 'PASS'
+            test_results['message'] = msg
+        else:
+            test_results['status'] = 'INCONCLUSIVE'
+            if noise_score > baseline_score:
+                test_results['message'] = "Model performed worse than random noise. No signal found in this fold."
+            else:
+                test_results['message'] = "Baseline is too low (<= 0.5) to verify leakage, but no signal is present."
+
+        return test_results
+            
+    except Exception as e:
+        if "not fitted" in str(e).lower():
+            return {'status': 'SKIPPED', 'message': 'Model not fitted (insufficient training data).', 'baseline_score': 0, 'noise_score': 0}
+        
+        logger.warning(f"Noise impact check failed: {e}")
+        return {}
 
 def _calculate_drawdown(series: pd.Series) -> pd.Series:
     """Calculates the drawdown for a given time series of values."""
@@ -652,7 +731,7 @@ class ExpandingWindowStrategy(pybroker.Strategy):
 
 BASE_CONTEXT_COLUMNS = ['open', 'high', 'low', 'close', 'volume', 'target', 'setup_mask', 'atr']
 
-def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01', end_date: Optional[str] = None, strategy_type: str = 'trend_following', tune_hyperparameters: bool = True, plot_results: bool = True, save_assets: bool = False, override_params: dict = None, use_tuned_strategy_params: bool = False, disable_inner_parallelism: bool = False, preloaded_data_df: pd.DataFrame = None, preloaded_features: list = None, commission_cost: float = 0.0, calc_bootstrap: bool = True, stop_event_checker=None):
+def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01', end_date: Optional[str] = None, strategy_type: str = 'trend_following', tune_hyperparameters: bool = True, plot_results: bool = True, save_assets: bool = False, override_params: dict = None, use_tuned_strategy_params: bool = False, disable_inner_parallelism: bool = False, preloaded_data_df: pd.DataFrame = None, preloaded_features: list = None, commission_cost: float = 0.0, calc_bootstrap: bool = True, perform_noise_test: bool = False, stop_event_checker=None):
     """
     Runs the full walk-forward analysis for a given ticker.
     """
@@ -662,12 +741,13 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
     last_trained_model = None
     is_ml = True # Assume ML strategy by default
     all_quality_scores = [] # For tracking model quality across folds
+    noise_test_results = [] # For tracking noise test results across folds
 
     try:
         if stop_event_checker and stop_event_checker():
             logger.warning("Stop event detected before starting walkforward analysis.")
             # Return the expected tuple format
-            return None, []
+            return None, [], []
 
         # --- Unify default end_date handling ---
         if end_date is None:
@@ -717,7 +797,7 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
                 logger.error(f"Strategy '{strategy_type}' for {ticker} has only {len(valid_setups)} total setups.")
                 logger.error(f"This is insufficient for a reliable walk-forward backtest (min: {min_total_setups_for_run}).")
                 logger.error("Consider using the 'pre-scan-universe' command to find tickers with more frequent setups.")
-                return None, [] # Abort the run early
+                return None, [], [] # Abort the run early
 
         # Filter out features that might not have been calculated or don't exist
         # features = [f for f in data_df.columns if f in features]
@@ -736,7 +816,7 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
         # Step 2: Define the training function for the model.
         # This function will be called by PyBroker for each walk-forward window.
         def train_fn(symbol, train_data, test_data, **kwargs):
-            nonlocal all_feature_importances, last_best_params, last_trained_model
+            nonlocal all_feature_importances, last_best_params, last_trained_model, noise_test_results
             from sklearn.model_selection import train_test_split # Local import for this function
             model_config = strategy_instance.get_model_config()
             # --- NEW: Enhanced logging and checks for data validity ---
@@ -745,12 +825,13 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
             logger.info(f"[{symbol}] Training fold: {train_start} to {train_end}. Initial samples: {len(train_data)}")
 
             # Use nonlocal to modify the list defined in the outer scope
-            nonlocal all_feature_importances, last_best_params, last_trained_model
             pybroker.disable_logging()
 
             if train_data.empty:
                 logger.warning(f"[{symbol}] Training data is empty for this fold. This is expected if the stock did not exist for the full period. Returning untrained model.")
                 model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+                if perform_noise_test:
+                    noise_test_results.append({'status': 'SKIPPED', 'message': 'Training data empty.', 'baseline_score': 0, 'noise_score': 0})
                 return {'model': model, 'features': features}
 
             # --- Filter training data to only include rows with valid targets ---
@@ -780,6 +861,8 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
             if train_data.empty or len(train_data) < min_total_samples:
                 logger.warning(f"[{symbol}] Training data is empty or has insufficient samples ({len(train_data)} < {min_total_samples}). No model will be trained for this fold.")
                 model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+                if perform_noise_test:
+                    noise_test_results.append({'status': 'SKIPPED', 'message': f'Insufficient samples ({len(train_data)} < {min_total_samples}).', 'baseline_score': 0, 'noise_score': 0})
                 return {'model': model, 'features': features}
             
             # Check for minimum samples in the minority class
@@ -787,6 +870,8 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
                 if len(train_data['target'].unique()) < 2 or train_data['target'].value_counts().min() < min_class_samples:
                     logger.warning(f"[{symbol}] Minority class has too few samples ({train_data['target'].value_counts().min()} < {min_class_samples}). No model will be trained for this fold.")
                     model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+                    if perform_noise_test:
+                        noise_test_results.append({'status': 'SKIPPED', 'message': f'Class imbalance (min class < {min_class_samples}).', 'baseline_score': 0, 'noise_score': 0})
                     return {'model': model, 'features': features}
 
             # --- Determine if tuning is feasible for this specific fold ---
@@ -862,6 +947,21 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
                         all_feature_importances.append(final_model.feature_importances_)
 
                 last_trained_model = final_model
+                
+                # --- NEW: Noise Impact Check ---
+                if perform_noise_test:
+                    if isinstance(final_model, PassThroughModel):
+                        # If the model was discarded due to low quality, record it as a failure/skip
+                        # We use the calculated auc_score if available, otherwise 0.5
+                        score = locals().get('auc_score', 0.5)
+                        noise_test_results.append({'status': 'FAIL', 'message': f'Model discarded due to low validation AUC ({score:.3f} < {min_auc_threshold}).', 'baseline_score': score, 'noise_score': 0})
+                    elif not test_data.empty and 'target' in test_data.columns:
+                        test_data_clean = test_data.dropna(subset=['target'])
+                        if not test_data_clean.empty:
+                            res = check_noise_impact(final_model, test_data_clean[features], test_data_clean['target'].astype(int), features)
+                            if res:
+                                noise_test_results.append(res)
+
                 return {'model': final_model, 'features': features}
 
         # Step 3: Register the model with PyBroker.
@@ -943,7 +1043,7 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
 
         if stop_event_checker and stop_event_checker():
             logger.warning("Stop event detected before starting pybroker walkforward.")
-            return None, []
+            return None, [], []
 
         result = strategy.walkforward(
             windows=windows,
@@ -964,12 +1064,12 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
         if stop_event_checker and stop_event_checker():
             logger.warning("Stop event detected during pybroker walkforward. Results may be incomplete.")
             # Return whatever result we have, but don't save assets.
-            return savable_result, all_quality_scores
+            return savable_result, all_quality_scores, noise_test_results
 
         if save_assets:
             if stop_event_checker and stop_event_checker():
                 logger.warning("Stop event detected before saving assets. Aborting save.")
-                return result, all_quality_scores
+                return result, all_quality_scores, noise_test_results
 
             _save_walkforward_artifacts(
                 ticker=ticker,
@@ -999,14 +1099,14 @@ def run_pybroker_walkforward(ticker: str = 'SPY', start_date: str = '2000-01-01'
     except Exception as e:
         logger.error(f"An error occurred during the PyBroker walk-forward analysis for {ticker}: {e}")
         traceback.print_exc()
-        return None, []
+        return None, [], []
     finally:
         # Unregister columns to clean up global scope
         if features:
             pybroker.unregister_columns(features)
         if context_columns_to_register:
             pybroker.unregister_columns(context_columns_to_register)
-    return result, all_quality_scores # Return the result object and quality scores
+    return result, all_quality_scores, noise_test_results # Return the result object and quality scores
 
 def _save_walkforward_artifacts(ticker, strategy_type, result, is_ml, last_trained_model, features, all_feature_importances, tune_hyperparameters, last_best_params, strategy_params):
     """Helper function to save all assets from a walk-forward run."""
@@ -1387,7 +1487,7 @@ def run_tune_strategy(ticker, strategy_type, n_calls, start_date, end_date, comm
             pybroker.register_columns(features)
         pybroker.register_columns(context_columns_to_register) # Always register context columns
 
-        result, quality_scores = run_pybroker_walkforward(
+        result, quality_scores, _ = run_pybroker_walkforward(
             ticker=ticker.upper(), strategy_type=strategy_type,
             start_date=start_date, end_date=end_date, tune_hyperparameters=False, plot_results=False, save_assets=False,
             override_params=current_strategy_params, disable_inner_parallelism=True, 
@@ -1650,7 +1750,7 @@ def run_quick_test(ticker: str, strategy_type: str, start_date: str, end_date: s
 
         # Use run_pybroker_walkforward to handle the backtest logic
         # We disable tuning to make it "quick", but it will still train a default model.
-        result, _ = run_pybroker_walkforward(
+        result, _, noise_results = run_pybroker_walkforward(
             ticker=ticker,
             strategy_type=strategy_type,
             start_date=start_date,
@@ -1662,7 +1762,8 @@ def run_quick_test(ticker: str, strategy_type: str, start_date: str, end_date: s
             use_tuned_strategy_params=False, # Use the passed params (which might be defaults + overrides)
             commission_cost=commission_cost,
             stop_event_checker=stop_event_checker,
-            calc_bootstrap=False # Speed up
+            calc_bootstrap=False, # Speed up
+            perform_noise_test=True # Enable noise test for quick check
         )
 
         if result is None:
@@ -1681,6 +1782,7 @@ def run_quick_test(ticker: str, strategy_type: str, start_date: str, end_date: s
             "trades_df": trades_df,
             "performance_fig": plot_performance_vs_benchmark(result, f'Quick Test Performance for {ticker} ({strategy_type})', ticker=ticker),
             "trades_fig": plot_trades_on_chart(result, ticker, f'Quick Test Trades for {ticker} ({strategy_type})'),
+            "noise_test_results": noise_results
         }
 
     except Exception as e:
@@ -2070,7 +2172,7 @@ def _process_batch_job(ticker, strat_type, n_calls, start_date, end_date, commis
         # Then, train the model with the best strategy parameters
         # Check for stop event again before starting the next long process
         logger.info(f"Training model for {ticker} - {strat_type} with tuned strategy parameters...")
-        result, _ = run_pybroker_walkforward(
+        result, _, _ = run_pybroker_walkforward(
             ticker=ticker, strategy_type=strat_type, start_date=start_date, end_date=end_date,
             tune_hyperparameters=True, plot_results=False, save_assets=True,
             use_tuned_strategy_params=True, commission_cost=commission,

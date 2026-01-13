@@ -7,7 +7,6 @@ with market structure context (Higher Lows or Lower Highs) to find high-probabil
 reversals or trend continuations, which are then qualified by an ML model.
 """
 
-import numpy as np
 import pandas as pd
 
 from pybroker_trainer.strategy_sdk import BaseStrategy
@@ -37,12 +36,16 @@ class StructureLiquidityStrategy(BaseStrategy):
         return {
             'swing_lookback': {'type': 'int', 'default': 2, 'tuning_range': (2, 7)},
             'atr_period': {'type': 'int', 'default': 14, 'tuning_range': (10, 30)},
+            'adx_period': {'type': 'int', 'default': 14, 'tuning_range': (10, 30)},
+            'bb_period': {'type': 'int', 'default': 20, 'tuning_range': (15, 30)},
             'initial_stop_atr_multiplier': {'type': 'float', 'default': 2.0, 'tuning_range': (1.5, 4.0)},
             'trailing_stop_atr_multiplier': {'type': 'float', 'default': 3.0, 'tuning_range': (2.5, 6.0)},
-            'stop_out_window': {'type': 'int', 'default': 60, 'tuning_range': (20, 120)},
+            'stop_out_window': {'type': 'int', 'default': 20, 'tuning_range': (10, 60)},
             'probability_threshold': {'type': 'float', 'default': 0.52, 'tuning_range': (0.50, 0.75)},
             'risk_per_trade_pct': {'type': 'float', 'default': 0.02, 'tuning_range': (0.01, 0.05)},
             'is_long_only': {'type': 'bool', 'default': True, 'tuning_range': None},
+            'use_trend_filter': {'type': 'bool', 'default': True, 'tuning_range': None},
+            'require_close_direction': {'type': 'bool', 'default': True, 'tuning_range': None},
         }
 
     def get_feature_list(self) -> list[str]:
@@ -50,8 +53,8 @@ class StructureLiquidityStrategy(BaseStrategy):
         return [
             'structure_bullish', 'structure_bearish',
             'dist_to_swing_high', 'dist_to_swing_low',
-            'atr', 'volume', 'rsi', 'roc',
-            'dist_to_sma_200', 'is_above_sma_200'
+            'atr_pct', 'volume_ratio', 'rsi', 'roc', 'adx', 'bb_width',
+            'dist_to_sma_200', 'is_above_sma_200', 'sma_200_slope'
         ]
 
     def add_strategy_specific_features(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -101,6 +104,17 @@ class StructureLiquidityStrategy(BaseStrategy):
         data['sma_200'] = data['close'].rolling(200).mean()
         data['dist_to_sma_200'] = (data['close'] - data['sma_200']) / data['atr']
         data['is_above_sma_200'] = (data['close'] > data['sma_200']).astype(int)
+        
+        # Calculate slope of SMA 200 (over 20 days) to determine trend direction
+        # We normalize by the SMA value to get a percentage slope
+        data['sma_200_slope'] = (data['sma_200'].diff(20) / data['sma_200']) * 100
+
+        # --- 6. Feature Normalization ---
+        # Raw ATR and Volume are non-stationary (they grow with price/time).
+        # We normalize them to make them comparable across decades.
+        data['atr_pct'] = data['atr'] / data['close']
+        vol_ma = data['volume'].rolling(20).mean()
+        data['volume_ratio'] = (data['volume'] / vol_ma).fillna(0)
 
         return data
 
@@ -119,6 +133,18 @@ class StructureLiquidityStrategy(BaseStrategy):
         # Short Setup: Price rallies above last swing HIGH, but closes BELOW it.
         short_setup = (data['high'] > data['last_swing_high_price']) & (data['close'] < data['last_swing_high_price'])
         
+        # --- Close Direction Filter ---
+        # Require the setup candle to close in the direction of the trade (Green for Long, Red for Short)
+        if self.params.get('require_close_direction', True):
+            long_setup = long_setup & (data['close'] > data['open'])
+            short_setup = short_setup & (data['close'] < data['open'])
+
+        # --- Trend Filter ---
+        # Only take trades in the direction of the major trend (SMA 200)
+        if self.params.get('use_trend_filter', True) and 'sma_200' in data.columns:
+            long_setup = long_setup & (data['close'] > data['sma_200'])
+            short_setup = short_setup & (data['close'] < data['sma_200'])
+
         if self.params.get('is_long_only', True):
             # Prevent re-entry on consecutive bars
             return long_setup & ~long_setup.shift(1).fillna(False)
@@ -126,3 +152,23 @@ class StructureLiquidityStrategy(BaseStrategy):
         raw_setup_mask = long_setup | short_setup
         # Prevent re-entry on consecutive bars
         return raw_setup_mask & ~raw_setup_mask.shift(1).fillna(False)
+
+    def calculate_target(self, data: pd.DataFrame) -> pd.Series:
+        """Calculates the target variable for model training."""
+        setup_mask = data['setup_mask']
+        
+        # Structural Stop: Below the low of the setup candle (the sweep low)
+        # We add a small ATR buffer (e.g. 0.5 ATR) to avoid noise wicks
+        stop_buffer = data['atr'] * 0.5
+        initial_stop_price_series = data['low'] - stop_buffer
+        
+        trailing_stop_atr_multiplier = self.params.get('trailing_stop_atr_multiplier', 3.0)
+        stop_out_window = self.params.get('stop_out_window', 20)
+        
+        return self.calculate_trailing_stop_target(
+            data_df=data,
+            setup_mask=setup_mask,
+            initial_stop_price_series=initial_stop_price_series,
+            atr_multiplier_trailing=trailing_stop_atr_multiplier,
+            stop_out_window=stop_out_window
+        )

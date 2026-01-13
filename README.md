@@ -81,6 +81,7 @@ Check out these articles to see how AlphaSuite can be used to develop and test s
 *   **[Algo Trading Series, Part 3: The Concept — Hunting for Liquidity](https://medium.com/codex/algo-trading-series-part-3-the-concept-hunting-for-liquidity-a689a16b807b)**: Why “Smart Money” hunts stops, and how to write Python code to find them.
 *   **[Algo Trading Series, Part 4: Codifying the Edge — When Textbooks Meet Reality](https://medium.com/codex/algo-trading-series-part-4-codifying-the-edge-when-textbooks-meet-reality-e7377f51282b)**: How to build a ML strategy based on the “Smart Money Concepts.”
 *   **[Algo Trading Series, Part 5: The Optimization — From Theory to Production](https://medium.com/codex/algo-trading-series-part-5-the-optimization-from-theory-to-production-70421f88ee9c)**: How to evolve the structure_liquidity strategy into an adaptive, Machine Learning-driven sniper.
+*   **[Algo Trading Series, Part 6: The Litmus Test — If You Feed It Garbage, Does It Still Eat?](https://medium.com/codex/algo-trading-series-part-6-the-litmus-test-if-you-feed-it-garbage-does-it-still-eat-6d2a29874c89)**: We stress-test the strategy with Noise Injection to ensure the edge is real and not just overfitting.
 
 ## 🛠️ Tech Stack
 

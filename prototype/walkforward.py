@@ -283,7 +283,7 @@ class WalkForward:
             else:
                 logger.info(
                     f"[{symbol}] Model quality check passed (AUC: {auc_score:.3f}). Retraining on full fold data.")
-                final_model = LGBMClassifier(**default_lgbm_params)
+                final_model = self.get_model(**default_lgbm_params)
                 final_model.fit(train_data[self._features], train_data['target'].astype(int))
                 if hasattr(final_model, 'feature_importances_'):
                     self._all_feature_importances.append(final_model.feature_importances_)

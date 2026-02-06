@@ -233,7 +233,7 @@ class WalkForward:
                 symbol=symbol
             )
 
-            final_model = self.get_model(random_state=42, n_jobs=-1, class_weight='balanced', **model_config,
+            final_model = LGBMClassifier(random_state=42, n_jobs=-1, class_weight='balanced', **model_config,
                                          **best_params)
             final_model.fit(train_data[self._features], train_data['target'].astype(int))
 

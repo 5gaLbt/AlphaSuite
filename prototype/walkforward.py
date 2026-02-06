@@ -23,7 +23,6 @@ from skopt.space import Real, Integer
 from quant_engine import BASE_CONTEXT_COLUMNS, _prepare_base_data, PassThroughModel, custom_predict_fn, \
     ExpandingWindowStrategy, prepare_metrics_df_for_display, plot_performance_vs_benchmark, plot_feature_importance
 
-setup_logging('../_ws_/walkforward/quant_engine.log')
 # --- Logging Configuration ---
 logger = logging.getLogger(__name__)
 

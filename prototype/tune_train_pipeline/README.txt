@@ -30,3 +30,5 @@ def run_pipeline_tune_train_backtest(
 
 The above provide a structure/framework/pipeline as a starting point, we can try difference portfolios, model configurations(scaler),
 strategy/features parameters and ... more. and use the results/metrix to evaluate and improve overall ML performance.
+
+You can run run_backtest(use TRAINED model), and run_backtest_passthrough(use PASSTHROUGH model) to compare results.

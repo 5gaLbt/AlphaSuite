@@ -10,16 +10,22 @@ from pybroker_trainer.config_loader import load_strategy_config
 from pybroker_trainer.strategy_loader import load_strategy_class, get_strategy_defaults
 from quant_engine import _prepare_base_data, BASE_CONTEXT_COLUMNS, custom_predict_fn, \
     prepare_metrics_df_for_display, ExpandingWindowStrategy, plot_performance_vs_benchmark, PassThroughModel
+from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+
+class ModelMode(Enum):
+    TRAINED = "useTrainedModel"
+    PASSTHROUGH = "usePassThrough"
+    DEFAULT = "default"
 
 
 def run_pybroker_portfolio_backtest(portfolio_name: str, tickers: list[str], strategy_type: str,
                                     start_date: str, end_date: str,
                                     plot_results: bool = True,
                                     use_tuned_strategy_params: bool = False,
-                                    use_trained_model: bool = False,
-                                    use_passthrough_model: bool = False,
+                                    model_mode: ModelMode = ModelMode.DEFAULT,
                                     max_open_positions: int = 5, commission_cost: float = 0.0):
     """
     Runs a single walk-forward backtest on a portfolio of tickers.
@@ -102,11 +108,11 @@ def run_pybroker_portfolio_backtest(portfolio_name: str, tickers: list[str], str
             if 'target' in train_data.columns:
                 train_data = train_data.dropna(subset=['target'])
 
-            if use_passthrough_model :
+            if model_mode == ModelMode.PASSTHROUGH :
                 return {'model': PassThroughModel(), 'features': features}
 
             # -- use trained model
-            if use_trained_model:
+            if  model_mode == ModelMode.TRAINED :
                 # --- ./WORK/strategy_configs/{strategy_type}_model.pkl
                 model = load_model(strategy_type)
                 if model :

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from prototype.tune_train_pipeline.backtest_portfolio import run_pybroker_portfolio_backtest
+from prototype.tune_train_pipeline.backtest_portfolio import run_pybroker_portfolio_backtest, ModelMode
 from prototype.tune_train_pipeline.pipeline_tune_train_test import run_backtest_portfolio
 from prototype.tune_train_pipeline.tune_train_base import print_full
 
@@ -27,8 +27,7 @@ if __name__ == "__main__":
         end_date='2025-12-31',
         plot_results=False,
         use_tuned_strategy_params=True,  # ./WORK/strategy_configs/{strategy_type}.json
-        use_trained_model=False,  # ./WORK/strategy_configs/{strategy_type}_model.pkl
-        use_passthrough_model=True,
+        model_mode=ModelMode.PASSTHROUGH,  # ./WORK/strategy_configs/{strategy_type}_model.pkl
         max_open_positions=10,
         commission_cost=0.0)
 

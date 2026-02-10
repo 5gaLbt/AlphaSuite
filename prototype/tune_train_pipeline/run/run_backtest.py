@@ -1,7 +1,7 @@
 import pandas as pd
 
 from prototype.tune_train_pipeline.pipeline_tune_train_test import run_backtest_portfolio
-from prototype.tune_train_pipeline.tune_train_base import print_full
+
 
 if __name__ == "__main__":
     tickers = ['SPY', 'WMT', 'T', 'JPM', 'BAC', 'C', 'CAT', 'FDX',

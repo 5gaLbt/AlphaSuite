@@ -3,7 +3,7 @@ import pandas as pd
 from prototype.tune_train_pipeline.tune_strategy import tune_strategy
 from prototype.tune_train_pipeline.tune_train_base import copy_to_strategy_configs, print_full
 from prototype.tune_train_pipeline.walkforward import WalkForward
-from prototype.tune_train_pipeline.backtest_portfolio import run_pybroker_portfolio_backtest
+from prototype.tune_train_pipeline.backtest_portfolio import run_pybroker_portfolio_backtest, ModelMode
 
 
 def run_tune_strategy(portfolio_name, tickers, strategy_type, start_date, end_date):
@@ -52,7 +52,7 @@ def run_train_model(portfolio_name, tickers, strategy_type, start_date, end_date
     result, all_quality_scores = walkforward.run_pybroker_walkforward(
         portfolio_name=portfolio_name, # prefix of result files
         tickers=tickers,
-        strategy_type= strategy_type,    #'structure_liquidity', #'donchian_breakout',  # 'structure_liquidity'
+        strategy_type= strategy_type,    #'structure_liquidity', 'donchian_breakout',
         start_date=start_date,
         end_date=end_date,
         tune_hyperparameters=False,
@@ -74,7 +74,7 @@ def run_backtest_portfolio(portfolio_name, tickers, strategy_type, start_date, e
         end_date=end_date,
         plot_results= False,
         use_tuned_strategy_params= True,    #  ./WORK/strategy_configs/{strategy_type}.json
-        use_trained_model = True,           #  ./WORK/strategy_configs/{strategy_type}_model.pkl
+        model_mode = ModelMode.TRAINED,     #  ./WORK/strategy_configs/{strategy_type}_model.pkl
         max_open_positions= 10,
         commission_cost = 0.0)
     print_full(result.metrics_df)

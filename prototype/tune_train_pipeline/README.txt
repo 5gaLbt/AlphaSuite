@@ -32,3 +32,6 @@ The above provide a structure/framework/pipeline as a starting point, we can try
 strategy/features parameters and ... more. and use the results/metrix to evaluate and improve overall ML performance.
 
 You can run run_backtest(use TRAINED model), and run_backtest_passthrough(use PASSTHROUGH model) to compare results.
+
+or you can run run_backtest_compare.py, if you have already trained 'structure_liquidity' and 'donchian_breakout',
+it will compare TRAINED and PASSTHROUGH with combination of two strategies, three tickers set, print out concat metrix_df result.

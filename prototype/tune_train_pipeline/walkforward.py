@@ -27,6 +27,8 @@ from tools.file_wrapper import convert_to_json_serializable
 # --- Logging Configuration ---
 logger = logging.getLogger(__name__)
 
+pd.set_option('future.no_silent_downcasting', True)
+
 class WalkForward:
 
     def __init__(self, collect_train_data=False):
@@ -56,7 +58,7 @@ class WalkForward:
 
     def get_model(self, **kwargs):
         if self._model is None:
-            self._model = LGBMClassifier(**kwargs)
+            self._model = LGBMClassifier(verbosity=-1, **kwargs)
         return self._model
 
     def append_train_data(self, train_data):
@@ -164,7 +166,7 @@ class WalkForward:
         if train_data.empty or len(train_data) < min_total_samples:
             logger.warning(
                 f"[{symbol}] Training data is empty or has insufficient samples ({len(train_data)} < {min_total_samples}). No model will be trained for this fold.")
-            model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+            model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=1, **model_config)
             return {'model': model, 'features': self._features}
 
         # Check for minimum samples in the minority class
@@ -173,7 +175,7 @@ class WalkForward:
                 'target'].value_counts().min() < min_class_samples:
                 logger.warning(
                     f"[{symbol}] Minority class has too few samples ({train_data['target'].value_counts().min()} < {min_class_samples}). No model will be trained for this fold.")
-                model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+                model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=1, **model_config)
                 return {'model': model, 'features': self._features}
         return None
 
@@ -207,9 +209,6 @@ class WalkForward:
     def train_fn(self, symbol, train_data, test_data, **kwargs):
         from sklearn.model_selection import train_test_split  # Local import for this function
         model_config = self._strategy_instance.get_model_config()
-        print(f"train_data.columns: {train_data.columns}")
-        company_id = train_data['company_id'].unique()
-        print(f"train_fn() company_id={company_id}")
         # --- NEW: Enhanced logging and checks for data validity ---
         train_start = train_data['date'].min().date() if not train_data.empty else 'N/A'
         train_end = train_data['date'].max().date() if not train_data.empty else 'N/A'
@@ -220,7 +219,7 @@ class WalkForward:
         if train_data.empty:
             logger.warning(
                 f"[{symbol}] Training data is empty for this fold. This is expected if the stock did not exist for the full period. Returning untrained model.")
-            model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+            model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=1, **model_config)
             return {'model': model, 'features': self._features}
 
         train_data = self.train_fn_prepare_train_data(train_data, symbol)
@@ -248,7 +247,6 @@ class WalkForward:
                 can_tune = False
 
         if can_tune:
-            print('-------------------> can tune ')
             best_params = self.tune_hyperparameters_with_gp_minimize(
                 train_data=train_data,
                 features=self._features,
@@ -267,7 +265,6 @@ class WalkForward:
                 self._all_feature_importances.append(final_model.feature_importances_)
             return {'model': final_model, 'features': self._features}
         else:
-            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx> no tuning ')
             # --- Train with default hyperparameters (no tuning) ---
             logger.info("Running with default hyperparameters (no tuning).")
             # --- Train LGBM with default hyperparameters ---
@@ -337,7 +334,6 @@ class WalkForward:
             # Filter out features that might not have been calculated or don't exist
             # _features = [f for f in data_df.columns if f in _features]
             # data_df.dropna(subset=_features + ['target'], inplace=True)
-            print(f"---> features=[{self._features}]")
             if self._is_ml:
                 pybroker.register_columns(self._features)
             pybroker.register_columns(self._context_columns_to_register)  # Always register context columns
@@ -474,7 +470,7 @@ class WalkForward:
                 return 1.0  # Return a high value (bad score) for minimization
 
             param_dict = {name: val for name, val in zip(dimensions_names, params)}
-            model = LGBMClassifier(random_state=42, n_jobs=1, class_weight='balanced', **model_config, **param_dict)
+            model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=1, class_weight='balanced', **model_config, **param_dict)
 
             cv_splitter = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
             scoring_metric = 'roc_auc_ovr' if model_config.get('objective') == 'multiclass' else 'roc_auc'

@@ -100,7 +100,7 @@ def run_pybroker_portfolio_backtest(portfolio_name: str, tickers: list[str], str
                 logger.warning(
                     f"[{symbol}] Training data is empty for this fold. This is expected if the stock did not exist for the full period. Returning untrained model.")
                 model_config = strategy_instance.get_model_config()
-                model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+                model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=1, **model_config)
                 return {'model': model, 'features': features}
 
             # --- FIX: Drop rows where the target is NaN before training ---
@@ -126,7 +126,7 @@ def run_pybroker_portfolio_backtest(portfolio_name: str, tickers: list[str], str
                 logger.warning(
                     f"[{symbol}] Training data is empty or has insufficient samples ({len(train_data)} < {min_total_samples}) for portfolio fold. Returning untrained model.")
                 model_config = strategy_instance.get_model_config()
-                model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+                model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=1, **model_config)
                 return {'model': model, 'features': features}
 
             if 'target' in train_data.columns and not train_data['target'].value_counts().empty:
@@ -135,11 +135,11 @@ def run_pybroker_portfolio_backtest(portfolio_name: str, tickers: list[str], str
                     logger.warning(
                         f"[{symbol}] Minority class has too few samples ({train_data['target'].value_counts().min()} < {min_class_samples}) for portfolio fold. Returning untrained model.")
                     model_config = strategy_instance.get_model_config()
-                    model = LGBMClassifier(random_state=42, n_jobs=1, **model_config)
+                    model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=1, **model_config)
                     return {'model': model, 'features': features}
 
             logger.info(f"[{symbol}] Training model on {len(train_data)} valid setup samples...")
-            model = LGBMClassifier(random_state=42, n_jobs=-1, class_weight='balanced',
+            model = LGBMClassifier(verbosity=-1, random_state=42, n_jobs=-1, class_weight='balanced',
                                    **strategy_instance.get_model_config())
             model.fit(train_data[features], train_data['target'].astype(int))
             return {'model': model, 'features': features}

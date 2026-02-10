@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import pybroker
 from pybroker.strategy import WalkforwardWindow
+
+from pybroker_trainer.strategy_loader import STRATEGY_CLASS_MAP, load_strategy_class
 from quant_engine import NumpyEncoder
 from tools.file_wrapper import convert_to_json_serializable
 from pathlib import Path
@@ -27,6 +29,14 @@ backtest_tickers = ['AAPL','MSFT','NVDA','GOOGL','AMZN','META','AVGO','TSLA','NF
 
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 
+def get_all_strategy_types():
+    return STRATEGY_CLASS_MAP.keys()
+
+def is_ml_strategy(strategy_type: str) -> bool:
+    if strategy_type  in get_all_strategy_types() :
+        strategy_class = load_strategy_class(strategy_type)
+        return strategy_class().is_ml_strategy
+    return False
 
 def get_current_path(file):
     return Path(file).resolve()  # resolve() gives absolute path

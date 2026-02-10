@@ -34,7 +34,8 @@ strategy/features parameters and ... more. and use the results/metrix to evaluat
 You can run run_backtest(use TRAINED model), and run_backtest_passthrough(use PASSTHROUGH model) to compare results.
 
 or you can run run_backtest_compare.py, if you have already trained 'structure_liquidity' and 'donchian_breakout',
-it will compare TRAINED and PASSTHROUGH with combination of two strategies, three tickers set, print out concat metrix_df result.
+it will compare [TRAINED, PASSTHROUGH(No Train), No Tune] with combination of two strategies, three tickers set,
+print out concat metrix_df result.
 
     tickers1 = ['SPY', 'WMT', 'T', 'JPM', 'BAC', 'C', 'CAT', 'FDX',
                'PFE', 'COST', 'AMZN', 'AAPL', 'INTC', 'DIS', 'HD',
@@ -52,261 +53,261 @@ it will compare TRAINED and PASSTHROUGH with combination of two strategies, thre
 ==========================================================================
 
 ====== structure_liquidity-ticker1-2021-01-01-2025-12-31 ========
-                      name        trained_value    passthrough value
-0              trade_count                   70                   89
-1     initial_market_value             100000.0             100000.0
-2         end_market_value            161675.21            142976.67
-3                total_pnl             62175.35             43456.27
-4           unrealized_pnl              -500.14               -479.6
-5         total_return_pct             62.17535             43.45627
-6             total_profit             92489.27             85022.27
-7               total_loss            -30313.92             -41566.0
-8               total_fees                  0.0                  0.0
-9             max_drawdown            -17724.33            -19225.88
-10        max_drawdown_pct            -11.62925           -14.320044
-11       max_drawdown_date  2025-04-08 00:00:00  2025-04-08 00:00:00
-12                win_rate            44.285714             44.94382
-13               loss_rate            55.714286             55.05618
-14          winning_trades                   31                   40
-15           losing_trades                   39                   49
-16                 avg_pnl           888.219286           488.272697
-17          avg_return_pct                7.297             6.265056
-18          avg_trade_bars            69.028571            60.483146
-19              avg_profit          2983.524839           2125.55675
-20          avg_profit_pct            23.997097              21.7055
-21  avg_winning_trade_bars           121.967742               110.05
-22                avg_loss              -777.28          -848.285714
-23            avg_loss_pct            -5.977436            -6.339388
-24   avg_losing_trade_bars            26.948718            20.020408
-25             largest_win             16125.12              6546.77
-26         largest_win_pct                76.97                51.66
-27        largest_win_bars                  268                  112
-28            largest_loss             -1721.83             -1951.27
-29        largest_loss_pct                -5.25               -13.59
-30       largest_loss_bars                   17                   17
-31                max_wins                    4                    5
-32              max_losses                    7                   11
-33                  sharpe             0.114535              0.07858
-34                 sortino             0.164318              0.10859
-35           profit_factor              1.33579             1.219767
-36             ulcer_index             1.704923             2.068908
-37                     upi             0.046432             0.029026
-38               equity_r2             0.958851             0.889431
-39               std_error         23193.831375         14936.523312
+                      name        trained value       no train value  no tune/train value
+0              trade_count                   71                   91                  178
+1     initial_market_value             100000.0             100000.0             100000.0
+2         end_market_value            157452.02            135229.64            122257.89
+3                total_pnl             57915.82             35681.12             22596.09
+4           unrealized_pnl               -463.8              -451.48               -338.2
+5         total_return_pct             57.91582             35.68112             22.59609
+6             total_profit             90048.51             71863.99            117920.29
+7               total_loss            -32132.69            -36182.87             -95324.2
+8               total_fees                  0.0                  0.0                  0.0
+9             max_drawdown            -17144.94            -16925.25             -25582.3
+10        max_drawdown_pct           -11.538373           -13.481426             -17.8853
+11       max_drawdown_date  2025-04-08 00:00:00  2023-10-27 00:00:00  2025-11-20 00:00:00
+12                win_rate            43.661972            42.857143            44.382022
+13               loss_rate            56.338028            57.142857            55.617978
+14          winning_trades                   31                   39                   79
+15           losing_trades                   40                   52                   99
+16                 avg_pnl           815.715775            392.10022           126.944326
+17          avg_return_pct             7.047183             5.550659             0.609831
+18          avg_trade_bars            66.957746            59.901099            16.988764
+19              avg_profit          2904.790645           1842.66641          1492.661899
+20          avg_profit_pct            24.115484            20.984103             6.780886
+21  avg_winning_trade_bars           119.677419           111.615385            26.974684
+22                avg_loss           -803.31725          -695.824423          -962.870707
+23            avg_loss_pct             -6.18075            -6.024423            -4.314545
+24   avg_losing_trade_bars                 26.1            21.115385             9.020202
+25             largest_win             16125.12              6546.77             14590.49
+26         largest_win_pct                76.97                51.66                35.97
+27        largest_win_bars                  268                  112                   51
+28            largest_loss             -1667.29             -1320.73             -4870.45
+29        largest_loss_pct                -5.25                -7.98                -13.5
+30       largest_loss_bars                   17                    6                    7
+31                max_wins                    3                    5                   11
+32              max_losses                    7                   11                    8
+33                  sharpe             0.109073             0.066869             0.035995
+34                 sortino              0.15796             0.091273             0.054005
+35           profit_factor             1.317489             1.188758             1.081349
+36             ulcer_index             1.714928             2.118638             3.074324
+37                     upi             0.043676             0.024145             0.012209
+38               equity_r2             0.954423             0.913395             0.526871
+39               std_error           21605.8065         12284.827762          11459.95253
 
 ====== structure_liquidity-ticker2-2021-01-01-2025-12-31 ========
-                      name        trained_value    passthrough value
-0              trade_count                   95                   94
-1     initial_market_value             100000.0             100000.0
-2         end_market_value            182173.32            194620.32
-3                total_pnl             82720.24             95261.87
-4           unrealized_pnl              -546.92              -641.55
-5         total_return_pct             82.72024             95.26187
-6             total_profit            134613.03             133504.2
-7               total_loss            -51892.79            -38242.33
-8               total_fees                  0.0                  0.0
-9             max_drawdown             -26491.9            -21753.25
-10        max_drawdown_pct           -16.490695           -12.392073
-11       max_drawdown_date  2025-04-08 00:00:00  2025-04-08 00:00:00
-12                win_rate            48.421053             52.12766
-13               loss_rate            51.578947             47.87234
-14          winning_trades                   46                   49
-15           losing_trades                   49                   45
-16                 avg_pnl           870.739368          1013.424149
-17          avg_return_pct            11.599053            10.858404
-18          avg_trade_bars            61.094737            63.670213
-19              avg_profit          2926.370217           2724.57551
-20          avg_profit_pct            34.664783            29.357143
-21  avg_winning_trade_bars           105.543478           102.673469
-22                avg_loss         -1059.036531          -849.829556
-23            avg_loss_pct            -10.05449            -9.284667
-24   avg_losing_trade_bars            19.367347                 21.2
-25             largest_win             12449.58             12163.53
-26         largest_win_pct               104.05               267.91
-27        largest_win_bars                  182                  133
-28            largest_loss             -1896.83             -2048.97
-29        largest_loss_pct               -18.44                -9.68
-30       largest_loss_bars                    8                   23
-31                max_wins                   10                    8
-32              max_losses                    8                   10
-33                  sharpe             0.104875               0.1216
-34                 sortino             0.151361             0.186158
-35           profit_factor             1.310329             1.359149
-36             ulcer_index             2.381198              2.11853
-37                     upi             0.042182             0.052184
-38               equity_r2              0.92618              0.97236
-39               std_error         25853.328641         31889.348519
+                      name        trained value       no train value  no tune/train value
+0              trade_count                   95                   90                  224
+1     initial_market_value             100000.0             100000.0             100000.0
+2         end_market_value            180963.99            198203.93            189290.31
+3                total_pnl             81501.95             98853.58             90497.01
+4           unrealized_pnl              -537.96              -649.65              -1206.7
+5         total_return_pct             81.50195             98.85358             90.49701
+6             total_profit            134072.07             138398.2            193724.88
+7               total_loss            -52570.12            -39544.62           -103227.87
+8               total_fees                  0.0                  0.0                  0.0
+9             max_drawdown            -27177.97            -21255.35            -33142.28
+10        max_drawdown_pct           -16.942514           -11.926736           -17.982818
+11       max_drawdown_date  2025-04-08 00:00:00  2025-04-08 00:00:00  2025-04-04 00:00:00
+12                win_rate            48.421053            54.444444            40.178571
+13               loss_rate            51.578947            45.555556            59.821429
+14          winning_trades                   46                   49                   90
+15           losing_trades                   49                   41                  134
+16                 avg_pnl           857.915263          1098.373111           404.004509
+17          avg_return_pct            11.556316            12.139556             2.709464
+18          avg_trade_bars            61.094737            66.655556            18.674107
+19              avg_profit          2914.610217          2824.453061          2152.498667
+20          avg_profit_pct            34.664783            29.854286            15.363111
+21  avg_winning_trade_bars           105.543478           105.795918            31.066667
+22                avg_loss         -1072.859592          -964.502927          -770.357239
+23            avg_loss_pct           -10.137347            -9.031707            -5.789254
+24   avg_losing_trade_bars            19.367347            19.878049            10.350746
+25             largest_win             12449.58             12448.61             16979.39
+26         largest_win_pct               104.05               267.91                40.95
+27        largest_win_bars                  182                  133                   66
+28            largest_loss             -2246.92              -2083.7              -4275.0
+29        largest_loss_pct               -13.59                -9.68                -8.16
+30       largest_loss_bars                   17                   23                    9
+31                max_wins                   10                    8                   10
+32              max_losses                    8                   10                   10
+33                  sharpe             0.103549             0.122834             0.086376
+34                 sortino             0.148648             0.190004             0.126607
+35           profit_factor             1.305814             1.369778             1.237357
+36             ulcer_index             2.411305              2.16297             3.067167
+37                     upi             0.041223             0.052526             0.035894
+38               equity_r2             0.922574             0.974335              0.92444
+39               std_error         25485.167832         33370.935752         36032.205804
 
 ====== structure_liquidity-ticker3-2021-01-01-2025-12-31 ========
-                      name        trained_value    passthrough value
-0              trade_count                   92                   98
-1     initial_market_value             100000.0             100000.0
-2         end_market_value            204400.18             205918.4
-3                total_pnl            104896.48            106340.89
-4           unrealized_pnl               -496.3              -422.49
-5         total_return_pct            104.89648            106.34089
-6             total_profit            150919.76            153122.21
-7               total_loss            -46023.28            -46781.32
-8               total_fees                  0.0                  0.0
-9             max_drawdown            -26417.55            -25451.95
-10        max_drawdown_pct           -14.805578           -13.924341
-11       max_drawdown_date  2025-04-08 00:00:00  2025-04-08 00:00:00
-12                win_rate                 50.0            54.081633
-13               loss_rate                 50.0            45.918367
-14          winning_trades                   46                   53
-15           losing_trades                   46                   45
-16                 avg_pnl           1140.17913          1085.111122
-17          avg_return_pct            12.535761            13.115204
-18          avg_trade_bars            65.032609            62.081633
-19              avg_profit          3280.864348          2889.098302
-20          avg_profit_pct            34.041957            30.363962
-21  avg_winning_trade_bars                110.0                 98.0
-22                avg_loss         -1000.506087         -1039.584889
-23            avg_loss_pct            -8.970435                 -7.2
-24   avg_losing_trade_bars            20.065217            19.777778
-25             largest_win              12068.5             12543.64
-26         largest_win_pct               267.91               267.91
-27        largest_win_bars                  133                  133
-28            largest_loss             -1869.07              -2134.6
-29        largest_loss_pct               -10.05                -9.26
-30       largest_loss_bars                    9                   20
-31                max_wins                    7                   10
-32              max_losses                    7                    7
-33                  sharpe             0.122914             0.124178
-34                 sortino             0.179124             0.181363
-35           profit_factor             1.373397             1.368972
-36             ulcer_index             2.352581             2.262631
-37                     upi             0.050557             0.053091
-38               equity_r2             0.906434             0.965075
-39               std_error         30141.107589         33592.105544
+                      name        trained value       no train value  no tune/train value
+0              trade_count                   92                  106                  271
+1     initial_market_value             100000.0             100000.0             100000.0
+2         end_market_value            204400.18            205885.99            130013.58
+3                total_pnl            104896.48            106351.22             30640.28
+4           unrealized_pnl               -496.3              -465.23               -626.7
+5         total_return_pct            104.89648            106.35122             30.64028
+6             total_profit            150919.76            155813.09            145167.86
+7               total_loss            -46023.28            -49461.87           -114527.58
+8               total_fees                  0.0                  0.0                  0.0
+9             max_drawdown            -26417.55            -25475.89            -38596.83
+10        max_drawdown_pct           -14.805578           -13.919656           -26.765169
+11       max_drawdown_date  2025-04-08 00:00:00  2025-04-08 00:00:00  2025-04-08 00:00:00
+12                win_rate                 50.0            51.886792            40.740741
+13               loss_rate                 50.0            48.113208            59.259259
+14          winning_trades                   46                   55                  110
+15           losing_trades                   46                   51                  160
+16                 avg_pnl           1140.17913          1003.313396           113.063764
+17          avg_return_pct            12.535761             10.94066             1.005055
+18          avg_trade_bars            65.032609            57.367925            18.332103
+19              avg_profit          3280.864348          2832.965273          1319.707818
+20          avg_profit_pct            34.041957            28.564727            11.058091
+21  avg_winning_trade_bars                110.0                 92.0            31.254545
+22                avg_loss         -1000.506087          -969.840588          -715.797375
+23            avg_loss_pct            -8.970435            -8.065686            -5.900125
+24   avg_losing_trade_bars            20.065217            20.019608               9.5625
+25             largest_win              12068.5             12543.64             12112.69
+26         largest_win_pct               267.91               267.91                40.95
+27        largest_win_bars                  133                  133                   66
+28            largest_loss             -1869.07             -1996.96             -2841.98
+29        largest_loss_pct               -10.05                -8.67               -13.22
+30       largest_loss_bars                    9                   18                    5
+31                max_wins                    7                    9                    5
+32              max_losses                    7                    7                   15
+33                  sharpe             0.122914             0.124088             0.040851
+34                 sortino             0.179124             0.181387             0.057927
+35           profit_factor             1.373397              1.36453             1.091974
+36             ulcer_index             2.352581              2.26751             3.648079
+37                     upi             0.050557             0.052969             0.013488
+38               equity_r2             0.906434             0.968688             0.637815
+39               std_error         30141.107589         34222.224954         13255.665696
 
 ====== donchian_breakout-ticker1-2021-01-01-2025-12-31 ========
-                      name        trained_value    passthrough value
-0              trade_count                   84                  154
-1     initial_market_value             100000.0             100000.0
-2         end_market_value            174010.09            163134.22
-3                total_pnl             74172.54              63648.9
-4           unrealized_pnl              -162.45              -514.68
-5         total_return_pct             74.17254              63.6489
-6             total_profit            105809.33            120890.18
-7               total_loss            -31636.79            -57241.28
-8               total_fees                  0.0                  0.0
-9             max_drawdown            -11005.33            -18018.13
-10        max_drawdown_pct             -6.84639           -11.475447
-11       max_drawdown_date  2025-09-02 00:00:00  2025-04-07 00:00:00
-12                win_rate            53.571429            49.350649
-13               loss_rate            46.428571            50.649351
-14          winning_trades                   45                   76
-15           losing_trades                   39                   78
-16                 avg_pnl           883.006429           413.304545
-17          avg_return_pct             2.114762             1.214156
-18          avg_trade_bars            15.916667            14.987013
-19              avg_profit          2351.318444          1590.660263
-20          avg_profit_pct             6.283333             5.366711
-21  avg_winning_trade_bars            21.755556            21.815789
-22                avg_loss          -811.199744          -733.862564
-23            avg_loss_pct            -2.695128            -2.831923
-24   avg_losing_trade_bars             9.179487             8.333333
-25             largest_win              8380.19              8038.61
-26         largest_win_pct                14.02                 16.3
-27        largest_win_bars                   48                   55
-28            largest_loss             -3990.62             -3650.57
-29        largest_loss_pct                 -4.9                -5.49
-30       largest_loss_bars                    4                    1
-31                max_wins                    5                   11
-32              max_losses                    5                    9
-33                  sharpe             0.120388             0.094412
-34                 sortino             0.173316              0.14649
-35           profit_factor             1.433595             1.272593
-36             ulcer_index             1.724817             1.985173
-37                     upi             0.052987             0.041291
-38               equity_r2             0.949144             0.940547
-39               std_error         21494.187406         22656.995562
+                      name        trained value       no train value  no tune/train value
+0              trade_count                   80                  157                  116
+1     initial_market_value             100000.0             100000.0             100000.0
+2         end_market_value            176906.58            154420.28            130919.49
+3                total_pnl             77072.31             54959.84             31407.02
+4           unrealized_pnl              -165.73              -539.56              -487.53
+5         total_return_pct             77.07231             54.95984             31.40702
+6             total_profit            106223.94            117263.61             81139.03
+7               total_loss            -29151.63            -62303.77            -49732.01
+8               total_fees                  0.0                  0.0                  0.0
+9             max_drawdown             -8953.92            -16728.51            -18797.34
+10        max_drawdown_pct            -6.312824           -11.181032           -15.562978
+11       max_drawdown_date  2024-04-03 00:00:00  2023-10-27 00:00:00  2023-10-27 00:00:00
+12                win_rate                 55.0            46.496815            42.241379
+13               loss_rate                 45.0            53.503185            57.758621
+14          winning_trades                   44                   73                   49
+15           losing_trades                   36                   84                   67
+16                 avg_pnl           963.403875           350.062675           270.750172
+17          avg_return_pct                2.375             0.988854             1.463534
+18          avg_trade_bars                16.15            14.757962            21.948276
+19              avg_profit          2414.180455          1606.350822          1655.898571
+20          avg_profit_pct             6.389318             5.501096             7.604898
+21  avg_winning_trade_bars            21.863636            21.890411            38.673469
+22                avg_loss            -809.7675          -741.711548          -742.268806
+23            avg_loss_pct            -2.531389              -2.9325             -3.02791
+24   avg_losing_trade_bars             9.166667             8.559524             9.716418
+25             largest_win              8380.19              7767.21             11268.15
+26         largest_win_pct                14.02                 16.3                43.21
+27        largest_win_bars                   48                   55                  124
+28            largest_loss             -2852.53             -2834.19             -3726.06
+29        largest_loss_pct                -5.52                 -4.3                -5.52
+30       largest_loss_bars                    4                    1                    1
+31                max_wins                    5                    9                    8
+32              max_losses                    5                   10                   10
+33                  sharpe             0.124648             0.084519             0.050515
+34                 sortino             0.182077             0.130107             0.074505
+35           profit_factor             1.456231             1.240725             1.136629
+36             ulcer_index             1.665093             2.055006             2.470505
+37                     upi             0.056449             0.035607             0.019204
+38               equity_r2             0.956652             0.917059             0.781121
+39               std_error         22028.092737         20845.973425         12651.303395
 
 ====== donchian_breakout-ticker2-2021-01-01-2025-12-31 ========
-                      name        trained_value    passthrough value
-0              trade_count                  119                  206
-1     initial_market_value             100000.0             100000.0
-2         end_market_value            176626.15             163499.3
-3                total_pnl             77246.16             63933.68
-4           unrealized_pnl              -620.01              -434.38
-5         total_return_pct             77.24616             63.93368
-6             total_profit             140242.5            151060.76
-7               total_loss            -62996.34            -87127.08
-8               total_fees                  0.0                  0.0
-9             max_drawdown            -14795.22            -17042.95
-10        max_drawdown_pct           -11.426331           -16.161813
-11       max_drawdown_date  2024-11-01 00:00:00  2023-10-27 00:00:00
-12                win_rate             47.89916            47.087379
-13               loss_rate             52.10084            52.912621
-14          winning_trades                   57                   97
-15           losing_trades                   62                  109
-16                 avg_pnl           649.127395            310.35767
-17          avg_return_pct             2.018151             1.914272
-18          avg_trade_bars            14.806723            13.684466
-19              avg_profit          2460.394737          1557.327423
-20          avg_profit_pct              8.67193             9.017526
-21  avg_winning_trade_bars            22.192982            20.597938
-22                avg_loss             -1016.07          -799.331009
-23            avg_loss_pct            -4.099032            -4.406972
-24   avg_losing_trade_bars             8.016129              7.53211
-25             largest_win             13692.66             10220.83
-26         largest_win_pct                27.91                85.42
-27        largest_win_bars                   21                   48
-28            largest_loss             -3758.04              -3087.3
-29        largest_loss_pct                -9.75               -11.33
-30       largest_loss_bars                    4                    3
-31                max_wins                    6                    8
-32              max_losses                    6                    8
-33                  sharpe             0.099761             0.078721
-34                 sortino             0.150412             0.113764
-35           profit_factor             1.336522             1.242003
-36             ulcer_index             2.338363             2.612604
-37                     upi             0.040833             0.032264
-38               equity_r2             0.829438             0.860425
-39               std_error         20619.714303         21564.148409
+                      name        trained value       no train value  no tune/train value
+0              trade_count                  118                  207                  168
+1     initial_market_value             100000.0             100000.0             100000.0
+2         end_market_value            177163.94            157083.77            111303.97
+3                total_pnl              77784.2             57500.96             11899.21
+4           unrealized_pnl              -620.26              -417.19              -595.24
+5         total_return_pct              77.7842             57.50096             11.89921
+6             total_profit            140701.85            143403.07             87555.57
+7               total_loss            -62917.65            -85902.11            -75656.36
+8               total_fees                  0.0                  0.0                  0.0
+9             max_drawdown            -14843.97            -17516.06             -28400.1
+10        max_drawdown_pct           -11.439799           -16.610463           -25.405432
+11       max_drawdown_date  2024-11-01 00:00:00  2023-10-27 00:00:00  2025-04-07 00:00:00
+12                win_rate            48.305085            45.410628            41.071429
+13               loss_rate            51.694915            54.589372            58.928571
+14          winning_trades                   57                   94                   69
+15           losing_trades                   61                  113                   99
+16                 avg_pnl           659.188136           277.782415            70.828631
+17          avg_return_pct             2.080847             2.152657             2.546786
+18          avg_trade_bars            14.864407             13.84058            18.886905
+19              avg_profit          2468.453509          1525.564574          1268.921304
+20          avg_profit_pct              8.67193             9.874362            12.944348
+21  avg_winning_trade_bars            22.192982            21.234043             32.26087
+22                avg_loss         -1031.436885          -760.195664          -764.205657
+23            avg_loss_pct            -4.078033            -4.270708                 -4.7
+24   avg_losing_trade_bars             8.016393             7.690265             9.565657
+25             largest_win             13913.51              9589.92             11212.91
+26         largest_win_pct                27.91                85.42               106.41
+27        largest_win_bars                   21                   48                   59
+28            largest_loss             -3758.04              -2659.0             -2858.54
+29        largest_loss_pct                -9.75                -4.71               -11.26
+30       largest_loss_bars                    4                   11                    4
+31                max_wins                    6                    8                    5
+32              max_losses                    6                    9                   11
+33                  sharpe             0.100277             0.072744             0.021196
+34                 sortino             0.151004             0.105424             0.028117
+35           profit_factor             1.338742             1.222897              1.04721
+36             ulcer_index             2.331691             2.725833             3.309164
+37                     upi             0.041158             0.028576              0.00696
+38               equity_r2             0.830264             0.764557             0.110435
+39               std_error         20764.966244         18829.283333          9071.340731
 
 ====== donchian_breakout-ticker3-2021-01-01-2025-12-31 ========
-                      name        trained_value    passthrough value
-0              trade_count                  152                  267
-1     initial_market_value             100000.0             100000.0
-2         end_market_value            164437.48            145939.96
-3                total_pnl             65055.01             46594.99
-4           unrealized_pnl              -617.53              -655.03
-5         total_return_pct             65.05501             46.59499
-6             total_profit            145317.36            125860.92
-7               total_loss            -80262.35            -79265.93
-8               total_fees                  0.0                  0.0
-9             max_drawdown            -18344.91            -23237.22
-10        max_drawdown_pct           -13.527678           -18.492323
-11       max_drawdown_date  2025-05-06 00:00:00  2023-10-27 00:00:00
-12                win_rate            44.078947            41.947566
-13               loss_rate            55.921053            58.052434
-14          winning_trades                   67                  112
-15           losing_trades                   85                  155
-16                 avg_pnl           427.993487           174.513071
-17          avg_return_pct             1.610526             1.151348
-18          avg_trade_bars            13.335526            13.018727
-19              avg_profit          2168.915821          1123.758214
-20          avg_profit_pct              8.92403             8.254107
-21  avg_winning_trade_bars            20.567164            20.348214
-22                avg_loss          -944.262941          -511.393097
-23            avg_loss_pct            -4.154235            -3.980968
-24   avg_losing_trade_bars             7.635294             7.722581
-25             largest_win             12367.57              7402.09
-26         largest_win_pct                27.91                51.78
-27        largest_win_bars                   21                   45
-28            largest_loss             -3758.04             -2432.88
-29        largest_loss_pct                -9.75                -8.93
-30       largest_loss_bars                    4                    3
-31                max_wins                    6                   10
-32              max_losses                    7                    9
-33                  sharpe             0.085609             0.060861
-34                 sortino             0.141744             0.092273
-35           profit_factor             1.266521             1.186196
-36             ulcer_index             2.527915             2.793468
-37                     upi             0.033349             0.023744
-38               equity_r2             0.701475              0.72581
-39               std_error         16429.104749          17167.90985
+                      name        trained value       no train value  no tune/train value
+0              trade_count                  155                  267                  217
+1     initial_market_value             100000.0             100000.0             100000.0
+2         end_market_value             166098.7            150686.13             86509.66
+3                total_pnl             66721.48             51522.55            -13105.59
+4           unrealized_pnl              -622.78              -836.42              -384.75
+5         total_return_pct             66.72148             51.52255            -13.10559
+6             total_profit            146099.49            130016.21              71495.3
+7               total_loss            -79378.01            -78493.66            -84600.89
+8               total_fees                  0.0                  0.0                  0.0
+9             max_drawdown             -16830.2             -23258.5            -28064.81
+10        max_drawdown_pct           -12.436739           -18.492323           -26.448283
+11       max_drawdown_date  2025-05-06 00:00:00  2023-10-27 00:00:00  2024-07-25 00:00:00
+12                win_rate            43.225806            43.071161             36.40553
+13               loss_rate            56.774194            56.928839             63.59447
+14          winning_trades                   67                  115                   79
+15           losing_trades                   88                  152                  138
+16                 avg_pnl           430.461161           192.968352           -60.394424
+17          avg_return_pct             1.503161             1.295019             1.019078
+18          avg_trade_bars            13.116129            12.891386            16.576037
+19              avg_profit          2180.589403          1130.575739           905.003797
+20          avg_profit_pct             8.689851             7.977217            10.551282
+21  avg_winning_trade_bars             20.41791            19.582609            29.240506
+22                avg_loss          -902.022841          -516.405658          -613.049928
+23            avg_loss_pct            -3.968523            -3.760592            -4.361304
+24   avg_losing_trade_bars             7.556818             7.828947             9.326087
+25             largest_win             12588.42              7670.49              7447.88
+26         largest_win_pct                27.91                51.78                 19.7
+27        largest_win_bars                   21                   45                   78
+28            largest_loss             -3758.04             -2975.59             -2260.44
+29        largest_loss_pct                -9.75               -10.96                -3.65
+30       largest_loss_bars                    4                    2                   11
+31                max_wins                    6                    6                    7
+32              max_losses                    7                    8                    9
+33                  sharpe             0.087338             0.065955            -0.015944
+34                 sortino             0.144153              0.10225            -0.022569
+35           profit_factor             1.274247             1.204859             0.940464
+36             ulcer_index             2.528648              2.73869             3.645123
+37                     upi             0.033971             0.026053            -0.004738
+38               equity_r2             0.723935             0.761679             0.028091
+39               std_error          16901.82024         18958.356939          5250.472923
 
 ==========================================================================

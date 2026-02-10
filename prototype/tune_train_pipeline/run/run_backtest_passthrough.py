@@ -21,8 +21,8 @@ if __name__ == "__main__":
 
     result = run_pybroker_portfolio_backtest(
         portfolio_name='backtest',
-        tickers=tickers,
-        strategy_type =  'donchian_breakout', #'structure_liquidity',  #'donchian_breakout',
+        tickers=tickers2,
+        strategy_type =  'structure_liquidity', #'structure_liquidity',  #'donchian_breakout',
         start_date='2021-01-01',
         end_date='2025-12-31',
         plot_results=False,

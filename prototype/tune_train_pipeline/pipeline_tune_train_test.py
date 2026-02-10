@@ -24,6 +24,7 @@ def run_tune_strategy(portfolio_name, tickers, strategy_type, start_date, end_da
     print(f"total duration: {datetime.now() - start}")
     print(f"all_quality_scores={all_quality_scores}")
     print_full(result.metrics_df)
+    return result
 
 def run_tune_hyper_params(portfolio_name, tickers, strategy_type, start_date, end_date):
     walkforward = WalkForward(collect_train_data=True)
@@ -44,6 +45,7 @@ def run_tune_hyper_params(portfolio_name, tickers, strategy_type, start_date, en
 
     print(f"all_quality_scores={all_quality_scores}")
     print_full(result.metrics_df)
+    return result
 
 def run_train_model(portfolio_name, tickers, strategy_type, start_date, end_date):
     start = datetime.now()
@@ -64,6 +66,7 @@ def run_train_model(portfolio_name, tickers, strategy_type, start_date, end_date
     print(f"total duration: {datetime.now() - start}")
     print(f"all_quality_scores={all_quality_scores}")
     print_full(result.metrics_df)
+    return result
 
 def run_backtest_portfolio(portfolio_name, tickers, strategy_type, start_date, end_date):
     result = run_pybroker_portfolio_backtest(
@@ -78,6 +81,7 @@ def run_backtest_portfolio(portfolio_name, tickers, strategy_type, start_date, e
         max_open_positions= 10,
         commission_cost = 0.0)
     print_full(result.metrics_df)
+    return result
 
 
 def run_pipeline_tune_train_backtest(
